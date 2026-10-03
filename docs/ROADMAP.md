@@ -6,7 +6,9 @@ Each milestone has **exit criteria**; do not start the next milestone's content 
 
 ---
 
-## M0: Foundations (1 week)
+## M0: Foundations (1 week) ✅
+
+> **Done.** Scaffold, tooling, CI, seeded RNG streams, event bus, content registry + validator (with the vertical-slice Frames, Cores, Mods, Slag, and Chassis transcribed into `src/data/`), and an Electron shell serving the game over `app://` with atomic save IPC.
 
 * Repo scaffold per [Technical Design §2](TECHNICAL_DESIGN.md#2-project-structure): `src/`, `electron/`, `tests/`, `tools/`.
 * ESLint, Prettier, `tsc --noEmit` JSDoc checking, `node --test`, GitHub Actions CI.

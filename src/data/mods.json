@@ -1,0 +1,119 @@
+[
+  {
+    "id": "mod_spring_loaded",
+    "name": "Spring-Loaded",
+    "tier": "salvage",
+    "weight": 1,
+    "text": "Draw 1 card when played.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_ballast",
+    "name": "Ballast",
+    "tier": "salvage",
+    "weight": 1,
+    "text": "+3 Block when played.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_whetted",
+    "name": "Whetted Edge",
+    "tier": "salvage",
+    "weight": 1,
+    "text": "+2 value per hit.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_hair_trigger",
+    "name": "Hair Trigger",
+    "tier": "refined",
+    "weight": 2,
+    "text": "Cost -1.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_twin_linked",
+    "name": "Twin-Linked",
+    "tier": "refined",
+    "weight": 2,
+    "text": "+1 hit.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_gyro",
+    "name": "Gyro-Stabilizer",
+    "tier": "salvage",
+    "weight": 1,
+    "text": "Retain.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_ricochet",
+    "name": "Ricochet",
+    "tier": "refined",
+    "weight": 1,
+    "text": "After resolving, repeat once against a random other enemy for 50% value.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_siphon",
+    "name": "Siphon Valve",
+    "tier": "refined",
+    "weight": 2,
+    "text": "Heal 1 HP per 5 unblocked damage dealt (max 3).",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_executioner",
+    "name": "Executioner",
+    "tier": "refined",
+    "weight": 1,
+    "stateCheck": true,
+    "text": "If the target is below 30% HP, +50% damage.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_kindling",
+    "name": "Kindling",
+    "tier": "salvage",
+    "weight": 1,
+    "stateCheck": true,
+    "text": "If the target has Burn, +3 value.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_resonator",
+    "name": "Resonator",
+    "tier": "refined",
+    "weight": 1,
+    "stateCheck": true,
+    "text": "+2 value for each other card in hand sharing this card's element.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_fail_safe",
+    "name": "Fail-Safe",
+    "tier": "refined",
+    "weight": 1,
+    "stateCheck": true,
+    "text": "Cannot be Suppressed. While another component on this card is Suppressed, +4 value.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_grounding",
+    "name": "Grounding Rod",
+    "tier": "salvage",
+    "weight": 1,
+    "stateCheck": true,
+    "text": "When played, if you have Slag in hand, Exhaust one Slag.",
+    "unlock": "base"
+  },
+  {
+    "id": "mod_scavenger",
+    "name": "Scavenger's Hook",
+    "tier": "refined",
+    "weight": 1,
+    "text": "If this kills an enemy, that enemy drops +1 loot roll.",
+    "unlock": "base"
+  }
+]

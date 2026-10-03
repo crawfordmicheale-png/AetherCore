@@ -1,0 +1,63 @@
+[
+  {
+    "id": "chassis_tinker",
+    "name": "The Tinker",
+    "hp": 65,
+    "energy": 3,
+    "draw": 5,
+    "unlock": { "kind": "default" },
+    "passive": {
+      "id": "field_kit",
+      "name": "Field Kit",
+      "text": "The first Workbench each Stratum grants +1 Tool Charge."
+    },
+    "deck": [
+      { "count": 4, "frame": "frame_strike", "core": "core_scrap" },
+      { "count": 4, "frame": "frame_brace", "core": "core_scrap" },
+      { "count": 1, "frame": "frame_heavy_strike", "core": "core_kinetic_slug" },
+      { "count": 1, "frame": "frame_strike", "core": "core_arc_cell" }
+    ],
+    "cargo": [{ "random": { "kind": "mod", "tier": "salvage" } }]
+  },
+  {
+    "id": "chassis_machinist",
+    "name": "The Machinist",
+    "hp": 75,
+    "energy": 3,
+    "draw": 5,
+    "unlock": { "kind": "insight", "cost": 120 },
+    "passive": {
+      "id": "momentum_recovery",
+      "name": "Momentum Recovery",
+      "text": "When a single hit deals 12+ damage, refund 1 Energy (once per turn)."
+    },
+    "deck": [
+      { "count": 3, "frame": "frame_heavy_strike", "core": "core_scrap" },
+      { "count": 3, "frame": "frame_bulwark", "core": "core_scrap" },
+      { "count": 2, "frame": "frame_strike", "core": "core_kinetic_slug" },
+      { "count": 1, "frame": "frame_heavy_strike", "core": "core_piston" },
+      { "count": 1, "frame": "frame_brace", "core": "core_scrap" }
+    ],
+    "cargo": [{ "id": "mod_ballast" }]
+  },
+  {
+    "id": "chassis_spark_weaver",
+    "name": "The Spark-Weaver",
+    "hp": 55,
+    "energy": 3,
+    "draw": 5,
+    "unlock": { "kind": "milestone", "milestone": "clear_stratum_2" },
+    "passive": {
+      "id": "cascade",
+      "name": "Cascade",
+      "text": "When you apply a status to an enemy that already has a different status, apply +1 stack."
+    },
+    "deck": [
+      { "count": 4, "frame": "frame_jab", "core": "core_arc_cell" },
+      { "count": 2, "frame": "frame_jab", "core": "core_ember" },
+      { "count": 3, "frame": "frame_plating", "core": "core_scrap" },
+      { "count": 1, "frame": "frame_conduit", "core": "core_ember" }
+    ],
+    "cargo": [{ "id": "mod_spring_loaded" }]
+  }
+]
