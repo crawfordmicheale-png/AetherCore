@@ -1,0 +1,94 @@
+[
+  {
+    "id": "core_scrap",
+    "name": "Scrap Core",
+    "tier": "starter",
+    "element": "kinetic",
+    "power": 2,
+    "rider": null,
+    "weight": 0,
+    "text": "Kinetic rider does not apply.",
+    "unlock": "base"
+  },
+  {
+    "id": "core_kinetic_slug",
+    "name": "Kinetic Slug",
+    "tier": "salvage",
+    "element": "kinetic",
+    "power": 4,
+    "rider": null,
+    "weight": 1,
+    "unlock": "base"
+  },
+  {
+    "id": "core_piston",
+    "name": "Piston Core",
+    "tier": "refined",
+    "element": "kinetic",
+    "power": 8,
+    "rider": null,
+    "weight": 3,
+    "unlock": "base"
+  },
+  {
+    "id": "core_flywheel",
+    "name": "Flywheel Core",
+    "tier": "refined",
+    "element": "kinetic",
+    "power": 5,
+    "rider": null,
+    "weight": 2,
+    "text": "+1 Power each time it is played this combat.",
+    "unlock": "base"
+  },
+  {
+    "id": "core_ember",
+    "name": "Ember Core",
+    "tier": "salvage",
+    "element": "thermal",
+    "power": 2,
+    "rider": 1,
+    "weight": 1,
+    "unlock": "base"
+  },
+  {
+    "id": "core_furnace",
+    "name": "Furnace Core",
+    "tier": "refined",
+    "element": "thermal",
+    "power": 6,
+    "rider": 2,
+    "weight": 2,
+    "unlock": "base"
+  },
+  {
+    "id": "core_arc_cell",
+    "name": "Arc Cell",
+    "tier": "salvage",
+    "element": "voltaic",
+    "power": 3,
+    "rider": 1,
+    "weight": 1,
+    "unlock": "base"
+  },
+  {
+    "id": "core_dynamo",
+    "name": "Dynamo",
+    "tier": "refined",
+    "element": "voltaic",
+    "power": 4,
+    "rider": 2,
+    "weight": 2,
+    "unlock": "base"
+  },
+  {
+    "id": "core_aether_shard",
+    "name": "Aether Shard",
+    "tier": "refined",
+    "element": "aether",
+    "power": 2,
+    "rider": null,
+    "weight": 1,
+    "unlock": "base"
+  }
+]

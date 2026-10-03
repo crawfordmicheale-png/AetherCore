@@ -32,7 +32,7 @@ AetherCore/
 ├── docs/                      # Design docs (this folder)
 ├── electron/
 │   ├── main.js                # Window creation, IPC handlers (save/load, settings, quit)
-│   └── preload.js             # contextBridge: exposes window.platform.{save,load,...}
+│   └── preload.cjs             # contextBridge: exposes window.platform.{save,load,...}
 ├── src/
 │   ├── index.html             # Single page; hosts the stacked canvases
 │   ├── main.js                # Bootstrap: load data, create Game, start loop
@@ -323,7 +323,7 @@ A quadratic Bézier from the card's top-center to the cursor, with the control p
 | Profile (Insight, unlocks, Codex, records) | `userData/profile.json` | On run end, on R&D purchase |
 | Current run | `userData/run.json` | On node entry, on node exit, at the start of each combat turn |
 
-* Saves are written atomically (write to `.tmp`, then rename) via Electron IPC from `preload.js`. In the browser build, `platform.js` falls back to `localStorage`.
+* Saves are written atomically (write to `.tmp`, then rename) via Electron IPC from `preload.cjs`. In the browser build, `platform.js` falls back to `localStorage`.
 * Every save has a `version`; `game/core/migrations.js` upgrades old saves.
 * The run save is deleted on run end (death/extraction/victory) after the profile is updated.
 
