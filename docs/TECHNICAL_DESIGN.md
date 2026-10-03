@@ -40,12 +40,12 @@ AetherCore/
 │   ├── game/                  # HEADLESS logic only (no DOM)
 │   │   ├── core/              # rng.js, events.js (bus), ids.js, registry.js (content lookup)
 │   │   ├── model/             # component.js, card.js (derivation), deck.js, cargo.js, statuses.js
-│   │   ├── combat/            # combat.js (state machine), actionQueue.js, ops.js, intents.js, ai.js
+│   │   ├── combat/            # combat.js (state machine, turn flow, intents, preview), ops.js (effect ops)
 │   │   ├── run/               # run.js (run state), map.js (generator), rewards.js, nodes/ (workbench, smelter, anomaly)
 │   │   └── meta/              # workshop.js (insight, R&D, unlocks), profile.js
 │   ├── render/                # canvas.js (layers, scaling), cardRenderer.js, tween.js, particles.js, shake.js, text.js
 │   ├── ui/                    # widgets: button, tooltip, panel, dragDrop, targetingArrow
-│   ├── scenes/                # title, workshop, map, combat, reward, workbench, smelter, anomaly
+│   ├── scenes/                # title, combat (M1); workshop, map, reward, workbench, smelter, anomaly (later)
 │   ├── input/                 # mouse.js, keyboard.js, hotkeys.js (rebindable)
 │   ├── audio/                 # audio.js (Web Audio, buses: music/sfx/ui)
 │   └── platform/              # platform.js: Electron IPC or localStorage fallback in browser
@@ -71,20 +71,23 @@ AetherCore/
 ### 3.2 Seeded RNG
 
 * Algorithm: `sfc32` seeded via `cyrb128(seedString)`.
-* **Independent streams** derived from the run seed so that one system's consumption doesn't perturb another: `map`, `loot`, `shuffle`, `ai`, `events`, `smelter`.
+* **Independent streams** derived from the run seed so that one system's consumption doesn't perturb another: `map`, `loot`, `shuffle`, `ai`, `events`, `smelter`, `combat` (random targeting).
 * RNG state is serialized with the run, so reloading never rerolls outcomes (anti save-scum).
 
-### 3.3 Event Bus & Action Queue
+### 3.3 Event Bus & Effect Resolution
 
-All combat effects are **Actions** pushed onto an `ActionQueue`. Resolving an action may push more actions (e.g., `Damage` → `OnKill` → `DropLoot`).
+Commands (`playCard`, `endTurn`) resolve **synchronously and depth-first**: every effect is an op (§4.3), and an op that triggers more effects (a kill triggering an on-death effect) resolves them fully before the next op in its list. Depth-first ordering matches how players read cause and effect, and it is simpler to reason about than a FIFO queue.
 
 ```js
-// Example action resolution flow for playing a card
-queue.push({ type: 'PlayCard', cardId, targetId });
-queue.resolveAll(state);   // synchronous; mutates state, emits events
+const combat = Combat.create({ registry, bus, encounterId, deck, player, seed });
+combat.start();
+combat.playCard('c3', 'e1'); // synchronous; mutates combat.state, emits events
+combat.endTurn();            // enemy turn resolves immediately, then the next player turn starts
 ```
 
-Each resolved action emits one or more **GameEvents** onto the bus (`cardPlayed`, `damageDealt`, `statusApplied`, `componentSuppressed`, `cardExhausted`, `slagAdded`, `enemyDied`, ...). The renderer subscribes and builds an **animation timeline** from these events. Input is locked only while the timeline has blocking animations (configurable by animation speed; "Instant" skips them).
+Each change emits a **GameEvent** onto the bus (`cardPlayed`, `damage`, `blockGained`, `statusApplied`, `componentSuppressed`, `suppressionExpired`, `cardExhausted`, `slagAdded`, `enemyMove`, `enemyDied`, `combatWon`, ...). The renderer subscribes and builds an **animation timeline** from these events. Input is locked only while the timeline has blocking animations (configurable by animation speed; "Instant" skips them). In the M1 graybox the timeline is simple: enemy actions are staggered by a fixed delay and HP bars tween.
+
+**Previews run the real command on a clone.** `combat.preview(uid, target)` deep-clones `CombatState`, plays the card on the clone with no event bus, and diffs HP/Block/Energy. Preview and outcome therefore share one code path and cannot diverge; a property test plays thousands of random actions to confirm it. Random-target cards are flagged so the UI doesn't leak which enemy the RNG will pick.
 
 **Hooks:** Components, statuses, Blueprints, and Slag register listeners on hook points:
 `combatStart`, `turnStart`, `cardDrawn`, `beforeCardPlayed`, `cardPlayed`, `afterCardPlayed`, `damageDealt`, `damageTaken`, `statusApplied`, `cardExhausted`, `cardDiscarded`, `turnEnd`, `enemyDied`, `combatEnd`.
@@ -112,14 +115,21 @@ RunState = {
   combat: null | CombatState,
 };
 
+// As implemented in src/game/combat/combat.js (plain JSON; round-trips through JSON.stringify).
 CombatState = {
+  version: 1,
+  encounterId: 'enc_foreman',
   turn: 1,
-  energy: 3,
-  piles: { draw: [...], hand: [...], discard: [...], exhaust: [...] }, // card uids or slag instances
-  player: { block: 0, statuses: { burn: 0, charge: 0, ... } },
-  enemies: [{ uid, defId, hp, maxHp, block, statuses, intent, patternIndex }],
-  suppression: [{ slot: 'mod', source: 'el_foreman_gantry', expiresAtTurnEnd: 2, scope: 'hand' }],
-  perCombat: { overclockSaved: false, played: { [uid]: count } },
+  phase: 'player',          // player | enemy | won | lost
+  energy: 3, energyPerTurn: 3, drawPerTurn: 5, maxHand: 10,
+  rng: { shuffle: [...], ai: [...], combat: [...] },
+  nextId: 1,                // for Slag instance uids (s1, s2, ...)
+  cards: { [uid]: { kind: 'card', uid, frame, core, mod? } | { kind: 'slag', uid, defId } },
+  piles: { draw: [...], hand: [...], discard: [...], exhaust: [...] }, // uids; top of draw = end
+  player: { hp, maxHp, block: 0, statuses: { burn: 2, charge: 1 } },  // zero statuses are removed
+  enemies: [{ uid: 'e1', defId, name, hp, maxHp, block, statuses, patternIndex, alive }],
+  suppression: [{ slot: 'mod' | 'coreRider', source: 'e1', untilTurn: 2 }],
+  timesPlayed: { [uid]: count },
 };
 ```
 
@@ -182,33 +192,66 @@ One JSON file per content type in `src/data/`. IDs follow `kind_name` (see [Cont
 }
 ```
 
+**Modifiers** (on Frames, Cores, and Mods): `{ stat, add | mul, per?, when? }` where `stat` is `cost`, `power`, `value`, `hits`, or `damageMult` (`mul` only), and `per` scales `add` by `otherSameElementInHand` or `timesPlayed`. Other behavior fields: Frame `utility` (`conduit` / `relay`), Core `adjective` (for generated card names) and `riderless`, Mod `keywords` and `unsuppressable`.
+
+```jsonc
+// slag.json — reactions while the Slag sits in hand
+{
+  "id": "slag_molten",
+  "cost": null,                         // null = unplayable
+  "onCardPlayedInHand": [{ "when": { "coreElement": "kinetic" }, "ops": [{ "op": "damage", "amount": 3, "target": "player" }] }],
+  "endOfTurnInHand": [{ "op": "applyStatus", "status": "burn", "stacks": 1, "target": "player" }]
+}
+// Rust Slag uses "capacityInHand": -1 instead.
+
+// enemies.json — moves are op lists; the pattern cycles
+{
+  "id": "el_foreman_gantry",
+  "tier": "elite",                      // normal | elite | boss
+  "hp": [80, 80],                       // rolled on the ai stream
+  "start": "first",                     // or "random" pattern offset
+  "moves": [
+    { "id": "emp", "name": "EMP Pulse", "intent": "suppress", "ops": [{ "op": "suppress", "slot": "mod", "duration": 1 }] },
+    { "id": "slam", "name": "Gantry Slam", "intent": "attack", "ops": [{ "op": "damage", "amount": 12 }] }
+  ],
+  "pattern": ["emp", "slam"],
+  "onDeath": []                         // optional ops (Boiler Mite burns you)
+}
+
+// encounters.json
+{ "id": "enc_foreman", "name": "The Foreman", "kind": "elite", "enemies": ["el_foreman_gantry"] }
+```
+
 ### 4.3 Effect Ops Vocabulary
 
-Ops are small, composable, and individually unit-tested. Every op takes `(state, ctx, params)` where `ctx` has `source`, `target`, `card`, and `derived`.
+Ops are small, composable, and individually unit-tested. Every op is `(combat, op, ctx)` in `src/game/combat/ops.js`, where `ctx` has `source` (`'player'`, an enemy uid, or `null` for Slag/Burn), the card's `target`, and per-card tallies (damage dealt, entities hit). Targets: `player`, `self`, `target` (default for hostile ops: the card's target, or the player when an enemy is the source), `allEnemies`, `randomEnemy`.
 
-| Op | Params | Notes |
-| --- | --- | --- |
-| `damage` | `amount`, `hits?`, `target?`, `pierce?` | Applies Strength, Shock, Chill, Plated, Block, Crush in that order. |
-| `block` | `amount`, `retain?` | |
-| `applyStatus` | `status`, `stacks`, `target?` | |
-| `draw` | `n` | |
-| `gainEnergy` | `n`, `nextTurn?` | |
-| `heal` | `amount` | |
-| `addSlag` | `slagId`, `count`, `pile` | `pile`: hand/draw/discard; `fused?` for permanent. |
-| `suppress` | `slot`, `duration`, `scope` | Emits `componentSuppressed`; triggers re-derivation. |
-| `exhaust` | `selector` | e.g., `{ "slag": true, "count": 1 }`. |
-| `summon` | `enemyId`, `position?` | |
-| `gainAether` | `amount` | |
-| `script` | `name`, `params` | Escape hatch: named JS function in `combat/scripts/`. Use sparingly; every script needs a test. |
+| Op | Params | Status | Notes |
+| --- | --- | --- | --- |
+| `damage` | `amount`, `hits?`, `target?`, `pierce?` | M1 | Strength, Shock, Chill, multipliers, Plated, then Block (Crush doubles damage to Block). |
+| `block` | `amount`, `target?` | M1 | |
+| `applyStatus` | `status`, `stacks`, `target?` | M1 | Ward on the player blocks the next debuff. |
+| `draw` | `n` | M1 | Reshuffles the discard pile when empty; overdraw past 10 is discarded. |
+| `gainEnergy` | `n` | M1 | |
+| `heal` | `amount`, `target?` | M1 | |
+| `addSlag` | `slag`, `count`, `pile` | M1 | `pile`: hand / draw (seeded random position) / discard. `fused?` arrives with Fused Slag. |
+| `suppress` | `slot`, `duration` | M1 | `slot`: `mod` (EMP) or `coreRider` (Dampening Field). Lasts through the player's next `duration` turns. |
+| `exhaustSlag` | `count` | M1 | Grounding Rod. |
+| `ricochet` | `pct` | M1 | Repeats the card's hit on a random other enemy. |
+| `siphon` | `per`, `max` | M1 | Heals from unblocked damage the card dealt. |
+| `summon` | `enemyId`, `position?` | Planned (M3) | Foreman Gantry's 50% summon. |
+| `gainAether` | `amount` | Planned (M2) | |
+| `script` | `name`, `params` | Planned | Escape hatch: named JS function in `combat/scripts/`. Use sparingly; every script needs a test. |
 
-**Conditions** (`when`) are a closed set of predicates: `targetHas`, `targetHpBelowPct`, `playerHas`, `handContains`, `handCount`, `isLastCardInHand`, `componentSuppressed`, `elementCountInHand`, `turnNumber`. Combine with `all` / `any` / `not`.
+**Conditions** (`when`) are a closed set of predicates in `src/game/model/conditions.js`: `targetHas`, `targetHpBelowPct`, `playerHas`, `coreElement`, `componentSuppressed`, `handCountAtLeast`, combined with `all` / `any` / `not`. Target conditions only apply once a target is known (hover preview or resolution).
 
 ### 4.4 Validation
 
-`tools/validate-data.js` (run in CI and at boot in dev):
-* JSON Schema validation per content type.
-* Cross-references resolve (encounter → enemy IDs, R&D unlocks → content IDs, starting decks → component IDs).
-* Sanity rules: weights 0–3, capacity 0–4, every elite has at least one `suppress` or `addSlag` op, every component has art (warn only).
+`tools/validate-data.js` (run in CI) and the `Registry` constructor (at boot) run the same validator in `src/game/core/content.js`:
+* Field rules per content type (types, ranges, enums, no unknown fields).
+* Every op's params against `OP_SCHEMAS`, every modifier and condition, in Mods, Frames, Cores, Slag triggers, enemy moves, and on-death effects.
+* Cross-references resolve (encounter → enemy IDs, enemy pattern → move IDs, `addSlag` → Slag IDs, starting decks → component IDs; R&D unlocks later).
+* Sanity rules: weights 0–3, capacity 0–4, starter decks within capacity and at least 8 cards, stacking-element Cores have a numeric rider, every elite has at least one `suppress` or `addSlag` move. (Art presence warnings arrive with the art pipeline.)
 
 ---
 
@@ -254,7 +297,7 @@ export function deriveCard(card, ctx) { ... }
 6. Keywords; add `exhaust` if `weight > capacity` or a mod forces it.
 7. Build `breakdown` and `hash`.
 
-**Target-dependent preview:** When a target is hovered, the scene calls `previewResolution(derived, target, state)` to compute final damage including statuses. This uses the same functions as real resolution so preview and outcome can never diverge (enforced by a property-based test).
+**Target-dependent preview:** When a target is hovered, the scene calls `combat.preview(uid, target)`, which plays the card on a cloned state (§3.3). Resolution itself re-derives the card per target, so conditional Mods (Kindling, Executioner) see each target's state, and preview and outcome can never diverge (enforced by a property-based test).
 
 **Re-derivation triggers:** The combat scene re-derives all cards in hand on any of: `cardDrawn`, `cardPlayed`, `cardDiscarded`, `statusApplied` (player or hovered target), `componentSuppressed`, `suppressionExpired`, `slagAdded`, `energyChanged`. Derivation is cheap (< 0.05 ms/card); memoize by `(card.uid, ctxVersion)`.
 
@@ -332,7 +375,7 @@ A quadratic Bézier from the card's top-center to the cursor, with the control p
 ## 9. Testing & Tooling
 
 * **Unit tests** for every op, status, and derivation rule. Golden tests for each starter deck card.
-* **Property tests** (hand-rolled generators): `previewResolution` equals actual resolution; derivation never yields negative cost or value; serialization round-trips.
+* **Property tests** (hand-rolled generators, `tests/combatProperties.test.js`): across 60 random games per property, preview equals actual resolution, invariants hold after every action (HP in range, no card lost or duplicated across piles), same seed + inputs reproduce identical state and event logs, and a JSON round-trip mid-combat resumes identically.
 * **Replay tests:** a recorded `(seed, inputs[])` log must reproduce the same final state hash.
 * **Balance simulator** (`tools/simulate.js`): a greedy bot plays N runs headlessly and reports win rate per Stratum, average HP lost per encounter, Cargo crush rate, and pick rates per component. Used to catch outliers before human playtests.
 * **CI** (GitHub Actions): lint, typecheck, data validation, tests, and a 200-run simulator smoke test on each PR.

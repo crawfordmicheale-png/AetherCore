@@ -82,7 +82,8 @@
     "coreScaling": 1,
     "keywords": [],
     "text": "Kinetic Cores gain +3 Power.",
-    "unlock": "base"
+    "unlock": "base",
+    "modifiers": [{ "stat": "power", "add": 3, "when": { "coreElement": "kinetic" } }]
   },
   {
     "id": "frame_brace",
@@ -153,7 +154,8 @@
     "coreScaling": null,
     "keywords": [],
     "text": "Deals no damage. Applies the Core's Attack rider twice.",
-    "unlock": "base"
+    "unlock": "base",
+    "utility": "conduit"
   },
   {
     "id": "frame_relay",
@@ -168,6 +170,7 @@
     "coreScaling": null,
     "keywords": [],
     "text": "Gain the Core's Defend rider. Draw 1.",
-    "unlock": "base"
+    "unlock": "base",
+    "utility": "relay"
   }
 ]

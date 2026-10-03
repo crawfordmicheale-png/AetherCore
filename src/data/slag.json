@@ -4,21 +4,35 @@
     "name": "Molten Slag",
     "cost": null,
     "keywords": [],
-    "text": "Unplayable. Playing a Kinetic Core card while this is in hand: take 3 damage. End of turn: gain Burn 1."
+    "text": "Unplayable. Playing a Kinetic Core card while this is in hand: take 3 damage. End of turn: gain Burn 1.",
+    "onCardPlayedInHand": [
+      {
+        "when": { "coreElement": "kinetic" },
+        "ops": [{ "op": "damage", "amount": 3, "target": "player" }]
+      }
+    ],
+    "endOfTurnInHand": [{ "op": "applyStatus", "status": "burn", "stacks": 1, "target": "player" }]
   },
   {
     "id": "slag_static",
     "name": "Static Slag",
     "cost": null,
     "keywords": [],
-    "text": "Unplayable. Playing a Voltaic Core card while this is in hand: become Jammed."
+    "text": "Unplayable. Playing a Voltaic Core card while this is in hand: become Jammed.",
+    "onCardPlayedInHand": [
+      {
+        "when": { "coreElement": "voltaic" },
+        "ops": [{ "op": "applyStatus", "status": "jammed", "stacks": 1, "target": "player" }]
+      }
+    ]
   },
   {
     "id": "slag_rust",
     "name": "Rust Slag",
     "cost": null,
     "keywords": [],
-    "text": "Unplayable. All Frames in hand have -1 Capacity."
+    "text": "Unplayable. All Frames in hand have -1 Capacity.",
+    "capacityInHand": -1
   },
   {
     "id": "slag_sludge",

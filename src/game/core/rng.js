@@ -8,7 +8,15 @@
  */
 
 /** Stream names used by the run. Order matters only for documentation. */
-export const STREAMS = /** @type {const} */ (['map', 'loot', 'shuffle', 'ai', 'events', 'smelter']);
+export const STREAMS = /** @type {const} */ ([
+  'map',
+  'loot',
+  'shuffle',
+  'ai',
+  'events',
+  'smelter',
+  'combat',
+]);
 
 /**
  * cyrb128: hashes a string into four 32-bit seeds.

@@ -1,0 +1,210 @@
+[
+  {
+    "id": "en_scrapper_drone",
+    "name": "Scrapper Drone",
+    "tier": "normal",
+    "hp": [18, 22],
+    "start": "random",
+    "moves": [
+      {
+        "id": "ram",
+        "name": "Ram",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 6
+          }
+        ]
+      },
+      {
+        "id": "brace",
+        "name": "Brace",
+        "intent": "defend",
+        "ops": [
+          {
+            "op": "block",
+            "amount": 5
+          }
+        ]
+      }
+    ],
+    "pattern": ["ram", "ram", "brace"]
+  },
+  {
+    "id": "en_rivet_hound",
+    "name": "Rivet Hound",
+    "tier": "normal",
+    "hp": [24, 28],
+    "start": "first",
+    "moves": [
+      {
+        "id": "bite",
+        "name": "Rivet Bite",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 4,
+            "hits": 2
+          }
+        ]
+      },
+      {
+        "id": "howl",
+        "name": "Grinding Howl",
+        "intent": "buff",
+        "ops": [
+          {
+            "op": "applyStatus",
+            "status": "strength",
+            "stacks": 2,
+            "target": "self"
+          }
+        ]
+      }
+    ],
+    "pattern": ["bite", "howl", "bite"]
+  },
+  {
+    "id": "en_boiler_mite",
+    "name": "Boiler Mite",
+    "tier": "normal",
+    "hp": [10, 12],
+    "start": "first",
+    "moves": [
+      {
+        "id": "scald",
+        "name": "Scald",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 5
+          }
+        ]
+      }
+    ],
+    "pattern": ["scald"],
+    "onDeath": [
+      {
+        "op": "applyStatus",
+        "status": "burn",
+        "stacks": 3,
+        "target": "player"
+      }
+    ]
+  },
+  {
+    "id": "en_slag_tender",
+    "name": "Slag Tender",
+    "tier": "normal",
+    "hp": [26, 30],
+    "start": "first",
+    "moves": [
+      {
+        "id": "pour",
+        "name": "Pour Slag",
+        "intent": "slag",
+        "ops": [
+          {
+            "op": "addSlag",
+            "slag": "slag_molten",
+            "count": 1,
+            "pile": "draw"
+          }
+        ]
+      },
+      {
+        "id": "swing",
+        "name": "Ladle Swing",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 7
+          }
+        ]
+      }
+    ],
+    "pattern": ["pour", "swing", "swing"]
+  },
+  {
+    "id": "en_jammer_bot",
+    "name": "Jammer Bot",
+    "tier": "normal",
+    "hp": [20, 20],
+    "start": "first",
+    "moves": [
+      {
+        "id": "dampen",
+        "name": "Dampening Field",
+        "intent": "suppress",
+        "ops": [
+          {
+            "op": "suppress",
+            "slot": "coreRider",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "id": "zap",
+        "name": "Zap",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 6
+          }
+        ]
+      }
+    ],
+    "pattern": ["dampen", "zap", "zap"]
+  },
+  {
+    "id": "el_foreman_gantry",
+    "name": "Foreman Gantry",
+    "tier": "elite",
+    "hp": [80, 80],
+    "start": "first",
+    "moves": [
+      {
+        "id": "emp",
+        "name": "EMP Pulse",
+        "intent": "suppress",
+        "ops": [
+          {
+            "op": "suppress",
+            "slot": "mod",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "id": "slam",
+        "name": "Gantry Slam",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 12
+          }
+        ]
+      },
+      {
+        "id": "rivet",
+        "name": "Rivet Gun",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 5,
+            "hits": 3
+          }
+        ]
+      }
+    ],
+    "pattern": ["emp", "slam", "rivet"]
+  }
+]

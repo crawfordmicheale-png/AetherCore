@@ -21,6 +21,7 @@ Requires Node.js 20+ (22 recommended).
 npm install           # also downloads the Electron binary
 npm start             # run the game in Electron
 npm run dev           # or serve src/ at http://localhost:5173 for browser iteration
+                      #   ?encounter=enc_foreman&seed=ABCD-1234&deck=starter jumps straight into a fight
 npm run check         # lint, format check, typecheck, data validation, tests (what CI runs)
 ```
 
@@ -32,6 +33,21 @@ npm run check         # lint, format check, typecheck, data validation, tests (w
 | `npm run validate-data` | Validates `src/data/*.json` fields, IDs, and cross-references        |
 | `npm run format`        | Prettier                                                             |
 
+## Playing the Combat Graybox (M1)
+
+Pick an encounter on the title screen (`T` toggles between the Sandbox test deck and the Tinker starter deck).
+
+| Input | Action |
+| --- | --- |
+| Drag a card onto an enemy, or click a card then an enemy | Play a targeted card |
+| Drag a card above the hand, or click it twice | Play an untargeted card |
+| `1`–`9`, `0` | Select a card; press again or `Enter` to play it |
+| `Q` / `E` or `←` / `→` | Cycle target |
+| `Space` | End turn (press twice if you still have playable cards) |
+| Right-click, or hold `Alt` | Exploded View: each component's exact contribution |
+| `D` / `F` / `X` | View draw / discard / exhaust piles |
+| `Esc` | Cancel selection, or return to the title |
+
 ## Project Layout
 
 ```
@@ -41,8 +57,12 @@ src/
   main.js        Boot: load content, create the stage, start the loop
   data/          Game content as JSON (vertical-slice subset of docs/CONTENT.md)
   game/core/     Headless logic: seeded RNG streams, event bus, content validation, registry
-  render/        Letterboxed 1920x1080 canvas layers, fixed-timestep loop
-  scenes/        Scene manager and the M0 boot scene
+  game/model/    Card derivation (deriveCard), rules text, conditions, statuses, deck builders
+  game/combat/   Combat engine (turns, intents, previews) and effect ops
+  render/        Letterboxed 1920x1080 canvas layers, loop, card compositing, FX, draw helpers
+  input/         Rebindable hotkeys
+  ui/            Widgets (Bézier targeting arrow)
+  scenes/        Scene manager, title (encounter picker), and combat scenes
   platform/      Save/load bridge (Electron IPC, or localStorage in the browser)
 tools/           Data validator, dev server, Node content loader
 tests/           node --test suites

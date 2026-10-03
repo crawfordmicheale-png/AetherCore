@@ -1,0 +1,38 @@
+[
+  {
+    "id": "enc_drones",
+    "name": "Drone Pair",
+    "kind": "easy",
+    "enemies": ["en_scrapper_drone", "en_scrapper_drone"]
+  },
+  {
+    "id": "enc_mites",
+    "name": "Mite Swarm",
+    "kind": "easy",
+    "enemies": ["en_boiler_mite", "en_boiler_mite", "en_boiler_mite"]
+  },
+  {
+    "id": "enc_hound",
+    "name": "Lone Hound",
+    "kind": "easy",
+    "enemies": ["en_rivet_hound"]
+  },
+  {
+    "id": "enc_tender_hound",
+    "name": "Slag Works",
+    "kind": "normal",
+    "enemies": ["en_rivet_hound", "en_slag_tender"]
+  },
+  {
+    "id": "enc_jammer_drones",
+    "name": "Jamming Patrol",
+    "kind": "normal",
+    "enemies": ["en_jammer_bot", "en_scrapper_drone"]
+  },
+  {
+    "id": "enc_foreman",
+    "name": "The Foreman",
+    "kind": "elite",
+    "enemies": ["el_foreman_gantry"]
+  }
+]

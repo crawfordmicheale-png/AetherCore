@@ -60,6 +60,11 @@ function createWindow() {
       sandbox: true,
     },
   });
+  // No application menu: Alt is a game key (Exploded View) and would otherwise reveal it.
+  win.removeMenu();
+  win.webContents.on('before-input-event', (_event, input) => {
+    if (input.type === 'keyDown' && input.key === 'F12') win.webContents.toggleDevTools();
+  });
   win.loadURL('app://game/index.html');
 }
 

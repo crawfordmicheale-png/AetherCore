@@ -2,17 +2,20 @@
   {
     "id": "core_scrap",
     "name": "Scrap Core",
+    "adjective": "Scrap",
     "tier": "starter",
     "element": "kinetic",
     "power": 2,
     "rider": null,
     "weight": 0,
     "text": "Kinetic rider does not apply.",
-    "unlock": "base"
+    "unlock": "base",
+    "riderless": true
   },
   {
     "id": "core_kinetic_slug",
     "name": "Kinetic Slug",
+    "adjective": "Kinetic",
     "tier": "salvage",
     "element": "kinetic",
     "power": 4,
@@ -23,6 +26,7 @@
   {
     "id": "core_piston",
     "name": "Piston Core",
+    "adjective": "Pneumatic",
     "tier": "refined",
     "element": "kinetic",
     "power": 8,
@@ -33,17 +37,20 @@
   {
     "id": "core_flywheel",
     "name": "Flywheel Core",
+    "adjective": "Spinning",
     "tier": "refined",
     "element": "kinetic",
     "power": 5,
     "rider": null,
     "weight": 2,
     "text": "+1 Power each time it is played this combat.",
-    "unlock": "base"
+    "unlock": "base",
+    "modifiers": [{ "stat": "power", "add": 1, "per": "timesPlayed" }]
   },
   {
     "id": "core_ember",
     "name": "Ember Core",
+    "adjective": "Smoldering",
     "tier": "salvage",
     "element": "thermal",
     "power": 2,
@@ -54,6 +61,7 @@
   {
     "id": "core_furnace",
     "name": "Furnace Core",
+    "adjective": "Searing",
     "tier": "refined",
     "element": "thermal",
     "power": 6,
@@ -64,6 +72,7 @@
   {
     "id": "core_arc_cell",
     "name": "Arc Cell",
+    "adjective": "Sparking",
     "tier": "salvage",
     "element": "voltaic",
     "power": 3,
@@ -74,6 +83,7 @@
   {
     "id": "core_dynamo",
     "name": "Dynamo",
+    "adjective": "Galvanic",
     "tier": "refined",
     "element": "voltaic",
     "power": 4,
@@ -84,6 +94,7 @@
   {
     "id": "core_aether_shard",
     "name": "Aether Shard",
+    "adjective": "Aetheric",
     "tier": "refined",
     "element": "aether",
     "power": 2,

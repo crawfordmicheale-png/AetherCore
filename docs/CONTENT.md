@@ -79,7 +79,7 @@ Mods are where the rule-breaking lives. **State-check** Mods are marked ⚙ and 
 | `mod_kindling` ⚙ | Kindling | S | 1 | If the target has Burn, +3 value. | Slice |
 | `mod_resonator` ⚙ | Resonator | R | 1 | +2 value for each **other** card in hand sharing this card's element. | Slice |
 | `mod_last_gasp` ⚙ | Last Gasp | R | 1 | If this is the last card in your hand, cost 0. | Base |
-| `mod_fail_safe` ⚙ | Fail-Safe | R | 1 | Cannot be Suppressed. While another component on this card is Suppressed, +4 value. | Slice |
+| `mod_fail_safe` ⚙ | Fail-Safe | R | 1 | Unsuppressable. +4 value while another part of this card is Suppressed. | Slice |
 | `mod_grounding` ⚙ | Grounding Rod | S | 1 | When played, if you have Slag in hand, Exhaust one Slag. | Slice |
 | `mod_heat_exchanger` ⚙ | Heat Exchanger | R | 1 | If you have Burn, remove it and add its stacks to this card's Burn rider. | Base |
 | `mod_overdrive` | Overdrive | P | 2 | Double the Core's Power. Always Overclocks this card (adds Exhaust even if within capacity). | Base |
