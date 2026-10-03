@@ -402,3 +402,21 @@ test('preview reports the exact outcome without changing state', () => {
   assert.equal(p?.energyAfter, 1);
   assert.equal(c.preview('h1'), null, 'single-target cards need a target to preview');
 });
+
+test('turnReady fires after the new hand is drawn (a safe autosave point)', () => {
+  const bus = new EventBus();
+  /** @type {number[]} */
+  const handSizes = [];
+  bus.on('turnReady', () => handSizes.push(combat.state.piles.hand.length));
+  const combat = Combat.create({
+    registry,
+    bus,
+    encounterId: 'enc_hound',
+    deck: buildStarterDeck(registry, 'chassis_tinker'),
+    player: { hp: 65, maxHp: 65 },
+    seed: 'ready',
+  });
+  combat.start();
+  combat.endTurn();
+  assert.deepEqual(handSizes, [5, 5]);
+});

@@ -51,6 +51,18 @@ export class Registry {
   }
 
   /**
+   * The content kind an id belongs to (e.g. "core"), or null.
+   * @param {string} id
+   * @returns {ContentKind | null}
+   */
+  kindOf(id) {
+    for (const [kind, defs] of this.byKind) {
+      if (defs.some((d) => d.id === id)) return /** @type {ContentKind} */ (kind);
+    }
+    return null;
+  }
+
+  /**
    * @param {ContentKind} kind
    * @returns {readonly ContentDef[]}
    */

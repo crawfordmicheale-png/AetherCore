@@ -128,6 +128,7 @@
     "tier": "refined",
     "weight": 1,
     "text": "If this kills an enemy, that enemy drops +1 loot roll.",
+    "hooks": { "enemyKilled": [{ "op": "bonusLoot", "n": 1 }] },
     "unlock": "base"
   }
 ]

@@ -99,21 +99,27 @@ Listener order: Blueprints → player statuses → card in play → cards in han
 /** @typedef {{ id: string, defId: string, tuned?: boolean, capacityBonus?: number }} ComponentInstance */
 /** @typedef {{ uid: string, frame: ComponentInstance, core: ComponentInstance, mod?: ComponentInstance, flags?: string[] }} CardInstance */
 
+// As implemented in src/game/run/run.js (M2). Map, Blueprints, Pressure, and Schematics arrive in M3+.
 RunState = {
   version: 1,
-  seed: 'A7F3-...',
-  rng: { map: [...], loot: [...], shuffle: [...], ai: [...], events: [...], smelter: [...] },
-  chassis: 'tinker',
-  pressure: 0,
+  seed: 'A7F3-K2QX',
+  chassisId: 'chassis_tinker',
+  rng: { map: [...], loot: [...], shuffle: [...], ai: [...], events: [...], smelter: [...], combat: [...] },
   hp: 65, maxHp: 65,
-  aether: 99,
+  aether: 0,
+  nextId: 12,                       // card uids c<n>, part uids p<n>
   deck: [/* CardInstance */],
-  cargo: { slots: 10, items: [/* ComponentInstance | { kind: 'schematic', stratum } */] },
-  blueprints: ['bp_heat_sink'],
-  map: { stratum: 1, nodes: [...], edges: [...], position: 'n_3_2', visited: [...] },
-  counters: { smelterCapacityUpgrades: 0, slagRemovals: 0 },
-  combat: null | CombatState,
+  cargo: { slots: 10, items: [/* ComponentInstance with uid */] },
+  step: 0,                          // index into the Gauntlet (M2) / map position (M3)
+  phase: 'combat',                  // combat | loot | workbench | won | lost
+  encounterId: 'enc_drones',
+  combat: null | CombatState,       // the live combat; saving the run saves the fight
+  loot: null | { items: [...], aether },
+  workbench: null | { charges: 3, used: 0, repaired: false },
+  flags: { fieldKitUsed: false },
+  stats: { combatsWon, aetherEarned, partsCrushed, cardsAssembled },
 };
+// ComponentInstance = { defId, uid?, tuned?, capacityBonus?, rusted? }
 
 // As implemented in src/game/combat/combat.js (plain JSON; round-trips through JSON.stringify).
 CombatState = {
@@ -239,6 +245,7 @@ Ops are small, composable, and individually unit-tested. Every op is `(combat, o
 | `exhaustSlag` | `count` | M1 | Grounding Rod. |
 | `ricochet` | `pct` | M1 | Repeats the card's hit on a random other enemy. |
 | `siphon` | `per`, `max` | M1 | Heals from unblocked damage the card dealt. |
+| `bonusLoot` | `n` | M2 | Extra post-combat loot rolls (Scavenger's Hook, via the `enemyKilled` hook). |
 | `summon` | `enemyId`, `position?` | Planned (M3) | Foreman Gantry's 50% summon. |
 | `gainAether` | `amount` | Planned (M2) | |
 | `script` | `name`, `params` | Planned | Escape hatch: named JS function in `combat/scripts/`. Use sparingly; every script needs a test. |
@@ -364,7 +371,7 @@ A quadratic Bézier from the card's top-center to the cursor, with the control p
 | --- | --- | --- |
 | Settings | `userData/settings.json` | On change |
 | Profile (Insight, unlocks, Codex, records) | `userData/profile.json` | On run end, on R&D purchase |
-| Current run | `userData/run.json` | On node entry, on node exit, at the start of each combat turn |
+| Current run | `userData/run.json` | After every run change (node entry, loot, Workbench action) and on each combat `turnReady` (after the new hand is drawn) |
 
 * Saves are written atomically (write to `.tmp`, then rename) via Electron IPC from `preload.cjs`. In the browser build, `platform.js` falls back to `localStorage`.
 * Every save has a `version`; `game/core/migrations.js` upgrades old saves.

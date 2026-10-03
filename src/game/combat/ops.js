@@ -128,6 +128,12 @@ export const OPS = {
     combat.dealDamage('player', victim.uid, amount, { ctx });
   },
 
+  /** Extra loot rolls for the post-combat reward (Scavenger's Hook). */
+  bonusLoot(combat, op) {
+    combat.state.bonusLoot = (combat.state.bonusLoot ?? 0) + op.n;
+    combat.emit({ type: 'bonusLoot', n: op.n });
+  },
+
   /** Heal 1 per `per` unblocked damage this card dealt, up to `max`. */
   siphon(combat, op, ctx) {
     const amount = Math.min(op.max, Math.floor((ctx.dealt ?? 0) / op.per));

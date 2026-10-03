@@ -5,6 +5,9 @@
     "tier": "normal",
     "hp": [18, 22],
     "start": "random",
+    "loot": {
+      "elements": ["kinetic"]
+    },
     "moves": [
       {
         "id": "ram",
@@ -37,6 +40,10 @@
     "tier": "normal",
     "hp": [24, 28],
     "start": "first",
+    "loot": {
+      "elements": ["kinetic"],
+      "favor": "frame"
+    },
     "moves": [
       {
         "id": "bite",
@@ -72,6 +79,9 @@
     "tier": "normal",
     "hp": [10, 12],
     "start": "first",
+    "loot": {
+      "elements": ["thermal"]
+    },
     "moves": [
       {
         "id": "scald",
@@ -101,6 +111,9 @@
     "tier": "normal",
     "hp": [26, 30],
     "start": "first",
+    "loot": {
+      "elements": ["thermal"]
+    },
     "moves": [
       {
         "id": "pour",
@@ -135,6 +148,10 @@
     "tier": "normal",
     "hp": [20, 20],
     "start": "first",
+    "loot": {
+      "elements": ["voltaic"],
+      "favor": "mod"
+    },
     "moves": [
       {
         "id": "dampen",
@@ -168,6 +185,9 @@
     "tier": "elite",
     "hp": [80, 80],
     "start": "first",
+    "loot": {
+      "favor": "mod"
+    },
     "moves": [
       {
         "id": "emp",

@@ -33,9 +33,14 @@ npm run check         # lint, format check, typecheck, data validation, tests (w
 | `npm run validate-data` | Validates `src/data/*.json` fields, IDs, and cross-references        |
 | `npm run format`        | Prettier                                                             |
 
-## Playing the Combat Graybox (M1)
+## Playing the Graybox
 
-Pick an encounter on the title screen (`T` toggles between the Sandbox test deck and the Tinker starter deck).
+**New Gauntlet run** chains four fights (the last against the Foreman) with salvage screens and two Workbenches; HP carries over and the run autosaves (**Continue run** resumes it, even mid-fight). **Quick fight** jumps straight into one encounter. `T` on the title toggles between the Tinker starter deck and a Sandbox test deck.
+
+- **Salvage:** drag parts into the Cargo Hold or onto the Crusher (click + `T` / `C` also work). Unclaimed parts are lost when you continue.
+- **Workbench:** click a deck card to edit it (or start with an empty bench for a new card), double-click or drag Cargo parts onto the sockets, and **Weld**. Each changed socket costs 1 Tool Charge; Tune, Dismantle, and Field Repair are on the bench.
+
+Combat controls:
 
 | Input | Action |
 | --- | --- |
@@ -59,10 +64,11 @@ src/
   game/core/     Headless logic: seeded RNG streams, event bus, content validation, registry
   game/model/    Card derivation (deriveCard), rules text, conditions, statuses, deck builders
   game/combat/   Combat engine (turns, intents, previews) and effect ops
+  game/run/      Run state, Cargo, Workbench operations, loot tables, the M2 Gauntlet, economy constants
   render/        Letterboxed 1920x1080 canvas layers, loop, card compositing, FX, draw helpers
   input/         Rebindable hotkeys
-  ui/            Widgets (Bézier targeting arrow)
-  scenes/        Scene manager, title (encounter picker), and combat scenes
+  ui/            Widgets: button, Cargo Hold grid, Bézier targeting arrow
+  scenes/        Title, combat, salvage (loot), Workbench, run summary, shared run header
   platform/      Save/load bridge (Electron IPC, or localStorage in the browser)
 tools/           Data validator, dev server, Node content loader
 tests/           node --test suites

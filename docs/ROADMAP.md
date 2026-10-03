@@ -32,7 +32,11 @@ Each milestone has **exit criteria**; do not start the next milestone's content 
 
 **Exit:** A full fight is playable with mouse and keyboard only; preview damage always matches actual damage; EMP visibly recalculates hand cards.
 
-## M2: Crafting Loop (2 weeks)
+## M2: Crafting Loop (2 weeks) ✅
+
+> **Done.** A serializable `Run` (HP, Aether, deck, 10-slot Cargo Hold) chained through a fixed **Gauntlet** (Combat → Combat → Workbench → Combat → Workbench → Elite) until the M3 map replaces it. Loot follows GDD §4.6 with element/kind bias from defeated enemies, and Scavenger's Hook now grants bonus rolls. Starter parts are Rusted. The Workbench supports Assemble, multi-socket Swap ("modify", 1 charge per changed socket), Dismantle (deck floor 8), Tune, and Field Repair, with the +2 Overclock limit and the Tinker's Field Kit. UI: a salvage tray with drag-to-Cargo and a Crusher drop zone, a Workbench with a live preview and capacity gauge, a run summary, and autosave/Continue (mid-combat resume on `turnReady`). Tests add run rules plus a property test that random Workbench sessions conserve parts and never leave an illegal card.
+>
+> **Exit check:** In automated browser runs, the full Gauntlet (4 combats, 2 Workbenches) plays start to finish. The voluntary-Overclock exit metric still needs human playtesters.
 
 * Cargo Hold model + UI (drag/drop, crush).
 * Loot tray after combat.
