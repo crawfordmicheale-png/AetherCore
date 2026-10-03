@@ -5,6 +5,7 @@
     "tier": "salvage",
     "weight": 1,
     "text": "Draw 1 card when played.",
+    "hooks": { "cardPlayed": [{ "op": "draw", "n": 1 }] },
     "unlock": "base"
   },
   {
@@ -13,6 +14,7 @@
     "tier": "salvage",
     "weight": 1,
     "text": "+3 Block when played.",
+    "hooks": { "cardPlayed": [{ "op": "block", "amount": 3 }] },
     "unlock": "base"
   },
   {
@@ -21,6 +23,7 @@
     "tier": "salvage",
     "weight": 1,
     "text": "+2 value per hit.",
+    "modifiers": [{ "stat": "value", "add": 2 }],
     "unlock": "base"
   },
   {
@@ -29,6 +32,7 @@
     "tier": "refined",
     "weight": 2,
     "text": "Cost -1.",
+    "modifiers": [{ "stat": "cost", "add": -1 }],
     "unlock": "base"
   },
   {
@@ -37,6 +41,7 @@
     "tier": "refined",
     "weight": 2,
     "text": "+1 hit.",
+    "modifiers": [{ "stat": "hits", "add": 1 }],
     "unlock": "base"
   },
   {
@@ -45,6 +50,7 @@
     "tier": "salvage",
     "weight": 1,
     "text": "Retain.",
+    "keywords": ["retain"],
     "unlock": "base"
   },
   {
@@ -53,6 +59,7 @@
     "tier": "refined",
     "weight": 1,
     "text": "After resolving, repeat once against a random other enemy for 50% value.",
+    "hooks": { "cardPlayed": [{ "op": "ricochet", "pct": 50 }] },
     "unlock": "base"
   },
   {
@@ -61,6 +68,7 @@
     "tier": "refined",
     "weight": 2,
     "text": "Heal 1 HP per 5 unblocked damage dealt (max 3).",
+    "hooks": { "cardPlayed": [{ "op": "siphon", "per": 5, "max": 3 }] },
     "unlock": "base"
   },
   {
@@ -70,6 +78,7 @@
     "weight": 1,
     "stateCheck": true,
     "text": "If the target is below 30% HP, +50% damage.",
+    "modifiers": [{ "stat": "damageMult", "mul": 1.5, "when": { "targetHpBelowPct": 30 } }],
     "unlock": "base"
   },
   {
@@ -79,6 +88,7 @@
     "weight": 1,
     "stateCheck": true,
     "text": "If the target has Burn, +3 value.",
+    "modifiers": [{ "stat": "value", "add": 3, "when": { "targetHas": "burn" } }],
     "unlock": "base"
   },
   {
@@ -88,6 +98,7 @@
     "weight": 1,
     "stateCheck": true,
     "text": "+2 value for each other card in hand sharing this card's element.",
+    "modifiers": [{ "stat": "value", "add": 2, "per": "otherSameElementInHand" }],
     "unlock": "base"
   },
   {
@@ -96,7 +107,9 @@
     "tier": "refined",
     "weight": 1,
     "stateCheck": true,
-    "text": "Cannot be Suppressed. While another component on this card is Suppressed, +4 value.",
+    "text": "Unsuppressable. +4 value while another part of this card is Suppressed.",
+    "unsuppressable": true,
+    "modifiers": [{ "stat": "value", "add": 4, "when": { "componentSuppressed": true } }],
     "unlock": "base"
   },
   {
@@ -106,6 +119,7 @@
     "weight": 1,
     "stateCheck": true,
     "text": "When played, if you have Slag in hand, Exhaust one Slag.",
+    "hooks": { "cardPlayed": [{ "op": "exhaustSlag", "count": 1 }] },
     "unlock": "base"
   },
   {

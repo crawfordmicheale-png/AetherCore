@@ -17,7 +17,11 @@ Each milestone has **exit criteria**; do not start the next milestone's content 
 
 **Exit:** CI green; `npm start` opens an empty window; `npm test` runs.
 
-## M1: Combat Graybox (2–3 weeks)
+## M1: Combat Graybox (2–3 weeks) ✅
+
+> **Done.** `deriveCard` (GDD §2.2) with breakdowns and render hashes; a serializable combat engine with depth-first op resolution, all M1 statuses plus Searing/Ward/Plated/Fortified, Slag (Molten, Static, Rust, Sludge), EMP and Dampening Field suppression, and clone-based previews; enemies and encounters as data (5 Stratum 1 enemies + Foreman Gantry). Graybox combat scene with hand fan, drag/click/keyboard play, Bézier targeting, exact intents, HP-bar damage preview, Exploded View, pile viewer, Overclock shake/sparks, and a title-screen encounter picker. Tests cover derivation goldens, every combat rule, and property tests (preview == actual, determinism, save/resume, invariants).
+>
+> **Deviations:** A *Sandbox* test deck (Tinker starter + modded cards) is the graybox default, because there's no Workbench yet to put Mods on cards. Seizure and Magnet Lock suppression, Foreman Gantry's 50% summon, and Scavenger's Hook's loot effect are deferred to M2/M3 with the systems they depend on. The animation timeline is minimal (staggered enemy actions, tweened HP bars).
 
 * Card derivation engine (`deriveCard`) with full test coverage.
 * Combat state machine, action queue, ops (`damage`, `block`, `applyStatus`, `draw`, `gainEnergy`, `addSlag`, `suppress`).

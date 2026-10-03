@@ -103,7 +103,7 @@ Each Core has an element. The element's effect depends on the Frame's verb. Ride
 | Element | Attack Rider | Defend Rider | Identity |
 | --- | --- | --- | --- |
 | **Kinetic** | *Crush:* deals double damage to Block. | *Reinforce:* +2 Block if you already have Block. | Highest raw Power, no lingering effects. |
-| **Thermal** | Apply **Burn X**. | *Searing X:* the next enemy to attack you this turn gains Burn X. | Damage over time; punishes multi-attackers. |
+| **Thermal** | Apply **Burn X**. | *Searing X:* the next enemy to attack you before your next turn gains Burn X. | Damage over time; punishes multi-attackers. |
 | **Voltaic** | Apply **Shock X**. | Gain **Charge X**. | Burst setup and energy economy. |
 | **Aether** | *Pierce:* ignores Block. | *Ward:* this Block also prevents the next debuff. | Rare, low Power, rule-bending. |
 | **Cryo** *(R&D unlock)* | Apply **Chill X**. | *Rime:* this Block is not removed at the start of your next turn. | Control and attrition. |
@@ -115,10 +115,12 @@ Each Core has an element. The element's effect depends on the Frame's verb. Ride
 | Status | On | Effect | Decay |
 | --- | --- | --- | --- |
 | **Block** | Any | Absorbs damage. | Removed at the start of the owner's turn. |
-| **Burn X** | Any | Take X damage at the end of the owner's turn. | −1 per tick. |
+| **Burn X** | Any | Take X damage at the end of the owner's turn. Ignores Block. | −1 per tick. |
 | **Shock X** | Any | The next attack hit taken deals +3 damage per stack; all stacks are consumed. | Consumed on hit. |
 | **Chill X** | Any | Deals 25% less attack damage. | −1 per turn. |
 | **Charge X** | Player | At 3 Charge, consume 3 and gain 1 Energy immediately. | Persists through combat. |
+| **Searing X** | Player | The next enemy to attack you gains Burn X. | Consumed, or cleared at the start of your turn. |
+| **Ward** | Player | Prevents the next debuff applied to you. | Consumed, or cleared at the start of your turn. |
 | **Overheat** | Player | Applied by some enemies: your next Overclocked card costs +1. | Consumed. |
 | **Jammed** | Player | Your next card played costs +1. | Consumed. |
 | **Strength X** | Any | Attack hits deal +X damage. | Permanent for the combat. |

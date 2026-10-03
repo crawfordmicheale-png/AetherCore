@@ -1,11 +1,13 @@
 // @ts-check
 /**
+ * @typedef {{ type: string, x?: number, y?: number, key?: string, button?: number }} InputEvent
+ *
  * @typedef {object} Scene
  * @property {(params?: Record<string, unknown>) => void} [enter]
  * @property {() => void} [exit]
  * @property {(dt: number) => void} [update]
  * @property {(stage: import('../render/canvas.js').Stage) => void} render
- * @property {(event: { type: string, x?: number, y?: number, key?: string }) => void} [onInput]
+ * @property {(event: InputEvent) => void} [onInput]
  */
 
 export class SceneManager {
@@ -34,7 +36,7 @@ export class SceneManager {
     this.current?.render(stage);
   }
 
-  /** @param {{ type: string, x?: number, y?: number, key?: string }} event */
+  /** @param {InputEvent} event */
   input(event) {
     this.current?.onInput?.(event);
   }

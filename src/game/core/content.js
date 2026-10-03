@@ -4,17 +4,22 @@
  * (docs/TECHNICAL_DESIGN.md §4). Pure functions only: loading files from disk
  * or over fetch is the caller's job (tools/ in Node, src/main.js in the app).
  */
+import { checkCondition } from '../model/conditions.js';
+import { PER_KEYS } from '../model/card.js';
+import { STATUS_IDS } from '../model/statuses.js';
 
 /**
- * Each kind maps to a JSON file in src/data/ and an ID prefix.
- * @type {Readonly<Record<string, { file: string, prefix: string }>>}
+ * Each kind maps to a JSON file in src/data/ and its allowed ID prefixes.
+ * @type {Readonly<Record<string, { file: string, prefix: string[] }>>}
  */
 export const CONTENT_KINDS = Object.freeze({
-  frame: { file: 'frames.json', prefix: 'frame_' },
-  core: { file: 'cores.json', prefix: 'core_' },
-  mod: { file: 'mods.json', prefix: 'mod_' },
-  slag: { file: 'slag.json', prefix: 'slag_' },
-  chassis: { file: 'chassis.json', prefix: 'chassis_' },
+  frame: { file: 'frames.json', prefix: ['frame_'] },
+  core: { file: 'cores.json', prefix: ['core_'] },
+  mod: { file: 'mods.json', prefix: ['mod_'] },
+  slag: { file: 'slag.json', prefix: ['slag_'] },
+  chassis: { file: 'chassis.json', prefix: ['chassis_'] },
+  enemy: { file: 'enemies.json', prefix: ['en_', 'el_', 'boss_'] },
+  encounter: { file: 'encounters.json', prefix: ['enc_'] },
 });
 
 /** @typedef {keyof typeof CONTENT_KINDS} ContentKind */
@@ -27,6 +32,16 @@ export const TARGETS = ['single', 'all', 'random', 'self'];
 export const ELEMENTS = ['kinetic', 'thermal', 'voltaic', 'aether', 'cryo'];
 export const KEYWORDS = ['exhaust', 'retain', 'innate', 'ethereal'];
 export const UNLOCKS = ['base', 'rnd'];
+export const UTILITY_RULES = ['conduit', 'relay'];
+export const ENEMY_TIERS = ['normal', 'elite', 'boss'];
+export const ENCOUNTER_KINDS = ['easy', 'normal', 'elite', 'boss'];
+export const INTENTS = ['attack', 'defend', 'buff', 'debuff', 'suppress', 'slag'];
+export const MODIFIER_STATS = ['cost', 'power', 'value', 'hits', 'damageMult'];
+export const OP_TARGETS = ['player', 'self', 'target', 'allEnemies', 'randomEnemy'];
+export const SUPPRESSION_SLOTS = ['mod', 'coreRider'];
+export const SLAG_PILES = ['draw', 'hand', 'discard'];
+/** Elements whose riders are status stacks (and so need a numeric `rider`). */
+export const STACKING_ELEMENTS = ['thermal', 'voltaic', 'cryo'];
 
 /** Overclocking may exceed capacity by at most this much weight (GDD §2.3). */
 export const OVERCLOCK_LIMIT = 2;
@@ -78,16 +93,22 @@ const FIELD_RULES = {
     coreScaling: is.nullable(is.positiveNumber),
     keywords: is.listOf(KEYWORDS),
     text: is.optional(is.string),
+    utility: is.optional(is.oneOf(UTILITY_RULES)),
+    modifiers: is.optional(is.array),
+    hooks: is.optional(is.object),
     unlock: is.oneOf(UNLOCKS),
   },
   core: {
     id: is.string,
     name: is.string,
+    adjective: is.string,
     tier: is.oneOf(TIERS),
     element: is.oneOf(ELEMENTS),
     power: is.int(0, 99),
     rider: is.nullable(is.int(1, 99)),
     weight: is.int(0, 3),
+    riderless: is.optional(is.bool),
+    modifiers: is.optional(is.array),
     text: is.optional(is.string),
     unlock: is.oneOf(UNLOCKS),
   },
@@ -98,6 +119,10 @@ const FIELD_RULES = {
     weight: is.int(0, 2),
     stateCheck: is.optional(is.bool),
     text: is.string,
+    keywords: is.optional(is.listOf(KEYWORDS)),
+    unsuppressable: is.optional(is.bool),
+    modifiers: is.optional(is.array),
+    hooks: is.optional(is.object),
     unlock: is.oneOf(UNLOCKS),
   },
   slag: {
@@ -106,6 +131,9 @@ const FIELD_RULES = {
     cost: is.nullable(is.int(0, 3)),
     keywords: is.listOf(KEYWORDS),
     text: is.string,
+    onCardPlayedInHand: is.optional(is.array),
+    endOfTurnInHand: is.optional(is.array),
+    capacityInHand: is.optional(is.int(-3, 0)),
   },
   chassis: {
     id: is.string,
@@ -118,6 +146,45 @@ const FIELD_RULES = {
     deck: is.array,
     cargo: is.array,
   },
+  enemy: {
+    id: is.string,
+    name: is.string,
+    tier: is.oneOf(ENEMY_TIERS),
+    hp: is.array,
+    start: is.oneOf(['first', 'random']),
+    moves: is.array,
+    pattern: is.array,
+    onDeath: is.optional(is.array),
+    statuses: is.optional(is.object),
+  },
+  encounter: {
+    id: is.string,
+    name: is.string,
+    kind: is.oneOf(ENCOUNTER_KINDS),
+    enemies: is.array,
+  },
+};
+
+const posInt = is.int(1, 999);
+/** Parameter checkers per op (docs/TECHNICAL_DESIGN.md §4.3). `?` marks optional params. */
+/** @type {Record<string, Record<string, (v: unknown) => string | null>>} */
+export const OP_SCHEMAS = {
+  damage: {
+    amount: is.int(0, 999),
+    'hits?': posInt,
+    'target?': is.oneOf(OP_TARGETS),
+    'pierce?': is.bool,
+  },
+  block: { amount: is.int(0, 999), 'target?': is.oneOf(OP_TARGETS) },
+  applyStatus: { status: is.oneOf(STATUS_IDS), stacks: posInt, 'target?': is.oneOf(OP_TARGETS) },
+  draw: { n: posInt },
+  gainEnergy: { n: posInt },
+  heal: { amount: posInt, 'target?': is.oneOf(OP_TARGETS) },
+  addSlag: { slag: is.string, count: posInt, pile: is.oneOf(SLAG_PILES) },
+  suppress: { slot: is.oneOf(SUPPRESSION_SLOTS), duration: posInt },
+  exhaustSlag: { count: posInt },
+  ricochet: { pct: is.int(1, 100) },
+  siphon: { per: posInt, max: posInt },
 };
 
 /**
@@ -154,7 +221,9 @@ export function validateContent(bundle) {
         if (!(field in rules)) errors.push(`${where}: unknown field "${field}"`);
       }
       if (typeof def.id === 'string') {
-        if (!def.id.startsWith(prefix)) errors.push(`${where}: id must start with "${prefix}"`);
+        if (!prefix.some((p) => def.id.startsWith(p))) {
+          errors.push(`${where}: id must start with ${prefix.map((p) => `"${p}"`).join(' or ')}`);
+        }
         if (ids.has(def.id)) errors.push(`${where}: duplicate id "${def.id}"`);
         ids.set(def.id, kind);
       }
@@ -162,8 +231,185 @@ export function validateContent(bundle) {
   }
 
   validateFrames(bundle.frame ?? [], errors);
+  validateCores(bundle.core ?? [], errors);
+  validateBehavior(bundle, ids, errors);
   validateChassis(bundle, ids, errors);
+  validateEnemies(bundle, ids, errors);
   return errors;
+}
+
+/**
+ * @param {ContentDef[]} cores
+ * @param {string[]} errors
+ */
+function validateCores(cores, errors) {
+  for (const c of cores) {
+    const stacking = STACKING_ELEMENTS.includes(c.element);
+    if (stacking && !c.riderless && c.rider === null) {
+      errors.push(`core ${c.id}: ${c.element} cores need a numeric rider`);
+    }
+    if (!stacking && c.rider !== null) {
+      errors.push(`core ${c.id}: ${c.element} riders are fixed effects; rider must be null`);
+    }
+  }
+}
+
+/**
+ * @param {unknown} list
+ * @param {string} where
+ * @param {string[]} errors
+ */
+function validateModifiers(list, where, errors) {
+  if (list === undefined) return;
+  if (!Array.isArray(list)) return; // field rule already reported it
+  list.forEach((m, i) => {
+    const at = `${where}.modifiers[${i}]`;
+    if (!MODIFIER_STATS.includes(m.stat))
+      errors.push(`${at}.stat must be one of: ${MODIFIER_STATS.join(', ')}`);
+    const isMult = m.stat === 'damageMult';
+    if (isMult && typeof m.mul !== 'number') errors.push(`${at}: damageMult needs a numeric "mul"`);
+    if (!isMult && !Number.isInteger(m.add)) errors.push(`${at}: needs an integer "add"`);
+    if (m.per !== undefined && !PER_KEYS.includes(m.per))
+      errors.push(`${at}.per must be one of: ${PER_KEYS.join(', ')}`);
+    if (m.when !== undefined) {
+      const problem = checkCondition(m.when);
+      if (problem) errors.push(`${at}.when: ${problem}`);
+    }
+    for (const key of Object.keys(m)) {
+      if (!['stat', 'add', 'mul', 'per', 'when'].includes(key))
+        errors.push(`${at}: unknown field "${key}"`);
+    }
+  });
+}
+
+/**
+ * @param {unknown} list
+ * @param {string} where
+ * @param {Map<string, string>} ids
+ * @param {string[]} errors
+ */
+export function validateOps(list, where, ids, errors) {
+  if (!Array.isArray(list)) {
+    errors.push(`${where} must be an array of ops`);
+    return;
+  }
+  list.forEach((op, i) => {
+    const at = `${where}[${i}]`;
+    const schema = op && OP_SCHEMAS[op.op];
+    if (!schema) {
+      errors.push(`${at}: unknown op "${op?.op}"`);
+      return;
+    }
+    for (const [rawKey, check] of Object.entries(schema)) {
+      const optional = rawKey.endsWith('?');
+      const key = optional ? rawKey.slice(0, -1) : rawKey;
+      if (optional && op[key] === undefined) continue;
+      const problem = check(op[key]);
+      if (problem) errors.push(`${at}.${key} ${problem}`);
+    }
+    const allowed = new Set(['op', ...Object.keys(schema).map((k) => k.replace('?', ''))]);
+    for (const key of Object.keys(op)) {
+      if (!allowed.has(key)) errors.push(`${at}: unknown param "${key}" for ${op.op}`);
+    }
+    if (op.op === 'addSlag' && typeof op.slag === 'string' && ids.get(op.slag) !== 'slag') {
+      errors.push(`${at}: unknown slag "${op.slag}"`);
+    }
+  });
+}
+
+/**
+ * @param {unknown} hooks
+ * @param {string} where
+ * @param {Map<string, string>} ids
+ * @param {string[]} errors
+ */
+function validateHooks(hooks, where, ids, errors) {
+  if (hooks === undefined || hooks === null || typeof hooks !== 'object') return;
+  for (const [name, ops] of Object.entries(hooks)) {
+    if (name !== 'cardPlayed') errors.push(`${where}.hooks: unknown hook "${name}"`);
+    else validateOps(ops, `${where}.hooks.${name}`, ids, errors);
+  }
+}
+
+/**
+ * @param {ContentBundle} bundle
+ * @param {Map<string, string>} ids
+ * @param {string[]} errors
+ */
+function validateBehavior(bundle, ids, errors) {
+  for (const kind of ['frame', 'core', 'mod']) {
+    for (const def of bundle[kind] ?? []) {
+      validateModifiers(def.modifiers, `${kind} ${def.id}`, errors);
+      validateHooks(def.hooks, `${kind} ${def.id}`, ids, errors);
+    }
+  }
+  for (const def of bundle.slag ?? []) {
+    const where = `slag ${def.id}`;
+    if (Array.isArray(def.onCardPlayedInHand)) {
+      def.onCardPlayedInHand.forEach((/** @type {any} */ trigger, /** @type {number} */ i) => {
+        const at = `${where}.onCardPlayedInHand[${i}]`;
+        if (trigger.when !== undefined) {
+          const problem = checkCondition(trigger.when);
+          if (problem) errors.push(`${at}.when: ${problem}`);
+        }
+        validateOps(trigger.ops, `${at}.ops`, ids, errors);
+      });
+    }
+    if (def.endOfTurnInHand !== undefined)
+      validateOps(def.endOfTurnInHand, `${where}.endOfTurnInHand`, ids, errors);
+  }
+}
+
+/**
+ * @param {ContentBundle} bundle
+ * @param {Map<string, string>} ids
+ * @param {string[]} errors
+ */
+function validateEnemies(bundle, ids, errors) {
+  for (const e of bundle.enemy ?? []) {
+    const where = `enemy ${e.id}`;
+    if (
+      !Array.isArray(e.hp) ||
+      e.hp.length !== 2 ||
+      !e.hp.every((n) => Number.isInteger(n) && n > 0) ||
+      e.hp[0] > e.hp[1]
+    ) {
+      errors.push(`${where}.hp must be [min, max] positive integers with min <= max`);
+    }
+    if (!Array.isArray(e.moves) || !Array.isArray(e.pattern)) continue;
+    const moveIds = new Set();
+    e.moves.forEach((/** @type {any} */ m, /** @type {number} */ i) => {
+      const at = `${where}.moves[${i}]`;
+      if (typeof m.id !== 'string') errors.push(`${at}.id must be a string`);
+      else if (moveIds.has(m.id)) errors.push(`${at}: duplicate move id "${m.id}"`);
+      moveIds.add(m.id);
+      if (typeof m.name !== 'string') errors.push(`${at}.name must be a string`);
+      if (!INTENTS.includes(m.intent))
+        errors.push(`${at}.intent must be one of: ${INTENTS.join(', ')}`);
+      validateOps(m.ops, `${at}.ops`, ids, errors);
+    });
+    if (e.pattern.length === 0) errors.push(`${where}.pattern must not be empty`);
+    for (const id of e.pattern) {
+      if (!moveIds.has(id)) errors.push(`${where}.pattern: unknown move "${id}"`);
+    }
+    if (e.onDeath !== undefined) validateOps(e.onDeath, `${where}.onDeath`, ids, errors);
+    // Every Elite must interact with the player's architecture (GDD §3.5).
+    if (e.tier === 'elite') {
+      const wrench = e.moves.some((/** @type {any} */ m) =>
+        (m.ops ?? []).some((/** @type {any} */ op) => op.op === 'suppress' || op.op === 'addSlag'),
+      );
+      if (!wrench) errors.push(`${where}: elites need at least one suppress or addSlag move`);
+    }
+  }
+  for (const enc of bundle.encounter ?? []) {
+    const where = `encounter ${enc.id}`;
+    if (!Array.isArray(enc.enemies)) continue;
+    if (enc.enemies.length < 1 || enc.enemies.length > 5)
+      errors.push(`${where}: needs 1-5 enemies`);
+    for (const id of enc.enemies) {
+      if (ids.get(id) !== 'enemy') errors.push(`${where}: unknown enemy "${id}"`);
+    }
+  }
 }
 
 /**
