@@ -101,5 +101,38 @@
     "rider": null,
     "weight": 1,
     "unlock": "base"
+  },
+  {
+    "id": "core_magma",
+    "name": "Magma Heart",
+    "adjective": "Molten",
+    "tier": "prototype",
+    "element": "thermal",
+    "power": 7,
+    "rider": 4,
+    "weight": 3,
+    "unlock": "base"
+  },
+  {
+    "id": "core_tesla",
+    "name": "Tesla Coil",
+    "adjective": "Arcing",
+    "tier": "prototype",
+    "element": "voltaic",
+    "power": 5,
+    "rider": 3,
+    "weight": 2,
+    "unlock": "base"
+  },
+  {
+    "id": "core_aether_prism",
+    "name": "Aether Prism",
+    "adjective": "Prismatic",
+    "tier": "prototype",
+    "element": "aether",
+    "power": 4,
+    "rider": null,
+    "weight": 2,
+    "unlock": "base"
   }
 ]

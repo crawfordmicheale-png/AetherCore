@@ -20,6 +20,8 @@ export const CONTENT_KINDS = Object.freeze({
   chassis: { file: 'chassis.json', prefix: ['chassis_'] },
   enemy: { file: 'enemies.json', prefix: ['en_', 'el_', 'boss_'] },
   encounter: { file: 'encounters.json', prefix: ['enc_'] },
+  blueprint: { file: 'blueprints.json', prefix: ['bp_'] },
+  event: { file: 'events.json', prefix: ['ev_'] },
 });
 
 /** @typedef {keyof typeof CONTENT_KINDS} ContentKind */
@@ -38,10 +40,28 @@ export const ENCOUNTER_KINDS = ['easy', 'normal', 'elite', 'boss'];
 export const INTENTS = ['attack', 'defend', 'buff', 'debuff', 'suppress', 'slag'];
 export const MODIFIER_STATS = ['cost', 'power', 'value', 'hits', 'damageMult'];
 export const OP_TARGETS = ['player', 'self', 'target', 'allEnemies', 'randomEnemy'];
-export const SUPPRESSION_SLOTS = ['mod', 'coreRider'];
+export const SUPPRESSION_SLOTS = ['mod', 'coreRider', 'frame'];
 export const SLAG_PILES = ['draw', 'hand', 'discard'];
 /** Elements whose riders are status stacks (and so need a numeric `rider`). */
 export const STACKING_ELEMENTS = ['thermal', 'voltaic', 'cryo'];
+export const BLUEPRINT_TIERS = ['common', 'uncommon', 'rare', 'boss'];
+/**
+ * Blueprint effect keys and their value checks. Run-level effects are read by
+ * the Run; combat-level ones become Combat mods (docs/TECHNICAL_DESIGN.md §4.2).
+ */
+export const BLUEPRINT_EFFECTS = {
+  toolCharges: 'int',
+  cargoSlots: 'int',
+  crushBonusPct: 'int',
+  fieldRepairBonusPct: 'int',
+  eliteBonusLoot: 'int',
+  smelterDiscountPct: 'int',
+  startBlock: 'int',
+  firstTurnEnergy: 'int',
+  heatSink: 'bool',
+  faraday: 'bool',
+  slagFilter: 'bool',
+};
 
 /** Overclocking may exceed capacity by at most this much weight (GDD §2.3). */
 export const OVERCLOCK_LIMIT = 2;
@@ -157,12 +177,26 @@ const FIELD_RULES = {
     onDeath: is.optional(is.array),
     statuses: is.optional(is.object),
     loot: is.optional(is.object),
+    triggers: is.optional(is.array),
   },
   encounter: {
     id: is.string,
     name: is.string,
     kind: is.oneOf(ENCOUNTER_KINDS),
     enemies: is.array,
+  },
+  blueprint: {
+    id: is.string,
+    name: is.string,
+    tier: is.oneOf(BLUEPRINT_TIERS),
+    text: is.string,
+    effects: is.object,
+  },
+  event: {
+    id: is.string,
+    name: is.string,
+    text: is.string,
+    choices: is.array,
   },
 };
 
@@ -187,10 +221,12 @@ export const OP_SCHEMAS = {
   ricochet: { pct: is.int(1, 100) },
   siphon: { per: posInt, max: posInt },
   bonusLoot: { n: posInt },
+  summon: { enemy: is.string, 'count?': posInt },
+  setPattern: { pattern: is.array },
 };
 
 /** Hook points a component may attach ops to. */
-export const HOOKS = ['cardPlayed', 'enemyKilled'];
+export const HOOKS = ['cardPlayed', 'enemyKilled', 'cardExhausted'];
 
 /**
  * Validates a content bundle: per-field rules, unique and correctly-prefixed
@@ -271,8 +307,8 @@ function validateModifiers(list, where, errors) {
     const at = `${where}.modifiers[${i}]`;
     if (!MODIFIER_STATS.includes(m.stat))
       errors.push(`${at}.stat must be one of: ${MODIFIER_STATS.join(', ')}`);
-    const isMult = m.stat === 'damageMult';
-    if (isMult && typeof m.mul !== 'number') errors.push(`${at}: damageMult needs a numeric "mul"`);
+    const isMult = m.stat === 'damageMult' || (m.stat === 'power' && m.mul !== undefined);
+    if (isMult && typeof m.mul !== 'number') errors.push(`${at}: ${m.stat} needs a numeric "mul"`);
     if (!isMult && !Number.isInteger(m.add)) errors.push(`${at}: needs an integer "add"`);
     if (m.per !== undefined && !PER_KEYS.includes(m.per))
       errors.push(`${at}.per must be one of: ${PER_KEYS.join(', ')}`);
@@ -318,6 +354,9 @@ export function validateOps(list, where, ids, errors) {
     }
     if (op.op === 'addSlag' && typeof op.slag === 'string' && ids.get(op.slag) !== 'slag') {
       errors.push(`${at}: unknown slag "${op.slag}"`);
+    }
+    if (op.op === 'summon' && typeof op.enemy === 'string' && ids.get(op.enemy) !== 'enemy') {
+      errors.push(`${at}: unknown enemy "${op.enemy}"`);
     }
   });
 }
@@ -398,6 +437,22 @@ function validateEnemies(bundle, ids, errors) {
       if (!moveIds.has(id)) errors.push(`${where}.pattern: unknown move "${id}"`);
     }
     if (e.onDeath !== undefined) validateOps(e.onDeath, `${where}.onDeath`, ids, errors);
+    (Array.isArray(e.triggers) ? e.triggers : []).forEach(
+      (/** @type {any} */ t, /** @type {number} */ i) => {
+        const at = `${where}.triggers[${i}]`;
+        if (typeof t.id !== 'string') errors.push(`${at}.id must be a string`);
+        const pct = t.when?.hpBelowPct;
+        if (!Number.isInteger(pct) || pct < 1 || pct > 99)
+          errors.push(`${at}.when.hpBelowPct must be an integer in [1, 99]`);
+        validateOps(t.ops, `${at}.ops`, ids, errors);
+        for (const op of Array.isArray(t.ops) ? t.ops : []) {
+          if (op.op === 'setPattern' && Array.isArray(op.pattern)) {
+            for (const id of op.pattern)
+              if (!moveIds.has(id)) errors.push(`${at}: setPattern uses unknown move "${id}"`);
+          }
+        }
+      },
+    );
     if (e.loot) {
       for (const el of e.loot.elements ?? []) {
         if (!ELEMENTS.includes(el)) errors.push(`${where}.loot.elements: unknown element "${el}"`);
@@ -412,6 +467,24 @@ function validateEnemies(bundle, ids, errors) {
         (m.ops ?? []).some((/** @type {any} */ op) => op.op === 'suppress' || op.op === 'addSlag'),
       );
       if (!wrench) errors.push(`${where}: elites need at least one suppress or addSlag move`);
+    }
+  }
+  for (const bp of bundle.blueprint ?? []) {
+    if (!bp.effects || typeof bp.effects !== 'object') continue;
+    for (const [key, value] of Object.entries(bp.effects)) {
+      const type = /** @type {Record<string, string>} */ (BLUEPRINT_EFFECTS)[key];
+      if (!type) errors.push(`blueprint ${bp.id}: unknown effect "${key}"`);
+      else if (type === 'int' && !Number.isInteger(value))
+        errors.push(`blueprint ${bp.id}.effects.${key} must be an integer`);
+      else if (type === 'bool' && value !== true)
+        errors.push(`blueprint ${bp.id}.effects.${key} must be true`);
+    }
+  }
+  for (const ev of bundle.event ?? []) {
+    for (const c of Array.isArray(ev.choices) ? ev.choices : []) {
+      if (typeof c.id !== 'string' || typeof c.label !== 'string') {
+        errors.push(`event ${ev.id}: each choice needs an id and a label`);
+      }
     }
   }
   for (const enc of bundle.encounter ?? []) {

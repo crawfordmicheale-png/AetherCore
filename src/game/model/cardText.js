@@ -57,6 +57,7 @@ export function cardRulesText(d) {
   }
   lines.push(...d.modText);
   if (d.suppressed.mod) lines.push('[Mod suppressed]');
+  if (d.seized) lines.push('[Frame seized: +1 cost, -1 capacity]');
   if (d.suppressed.coreRider) lines.push('[Rider suppressed]');
   const keywords = d.keywords.map((k) =>
     k === 'exhaust' && d.overclock > 0 ? 'Exhaust (Overclocked)' : k[0].toUpperCase() + k.slice(1),

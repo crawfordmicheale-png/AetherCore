@@ -1,0 +1,70 @@
+[
+  {
+    "id": "ev_buried_crate",
+    "name": "Buried Crate",
+    "text": "A sealed crate sits half-sunk in cooled slag. The lid is rusted shut, but the seams look weak.",
+    "choices": [
+      {
+        "id": "pry",
+        "label": "Pry it open",
+        "text": "Take 6 damage. Gain a random Refined part."
+      },
+      {
+        "id": "leave",
+        "label": "Leave it",
+        "text": "Nothing happens."
+      }
+    ]
+  },
+  {
+    "id": "ev_hungry_servitor",
+    "name": "The Hungry Servitor",
+    "text": "A small servitor with a cracked furnace-belly tugs at your plating, begging for parts.",
+    "choices": [
+      {
+        "id": "feed",
+        "label": "Feed it a part from Cargo",
+        "text": "Refined or better: gain a random Blueprint. Otherwise: gain 25 Aether."
+      },
+      {
+        "id": "ignore",
+        "label": "Ignore it",
+        "text": "It whirs sadly and wanders off."
+      }
+    ]
+  },
+  {
+    "id": "ev_conveyor_lottery",
+    "name": "The Conveyor Lottery",
+    "text": "Parts roll past on a still-running belt. You could swap one of yours for whatever comes next.",
+    "choices": [
+      {
+        "id": "swap",
+        "label": "Swap a part from Cargo",
+        "text": "50%: a random part one tier higher. 50%: one tier lower."
+      },
+      {
+        "id": "walk",
+        "label": "Walk away",
+        "text": "Nothing happens."
+      }
+    ]
+  },
+  {
+    "id": "ev_rogue_bench",
+    "name": "Rogue Workbench",
+    "text": "A damaged Workbench sparks and hisses. Its clamps still move.",
+    "choices": [
+      {
+        "id": "use",
+        "label": "Use it",
+        "text": "Take 5 damage. A Workbench visit with 1 Tool Charge."
+      },
+      {
+        "id": "salvage",
+        "label": "Salvage it",
+        "text": "Gain 30 Aether."
+      }
+    ]
+  }
+]

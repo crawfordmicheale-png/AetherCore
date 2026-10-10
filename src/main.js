@@ -7,7 +7,6 @@ import { startLoop } from './render/loop.js';
 import { getPlatform } from './platform/platform.js';
 import { Combat } from './game/combat/combat.js';
 import { buildSandboxDeck, buildStarterDeck } from './game/model/deck.js';
-import { GAUNTLET } from './game/run/gauntlet.js';
 import { RUN_VERSION, Run } from './game/run/run.js';
 import { SceneManager } from './scenes/sceneManager.js';
 import { TitleScene } from './scenes/titleScene.js';
@@ -15,6 +14,9 @@ import { CombatScene } from './scenes/combatScene.js';
 import { LootScene } from './scenes/lootScene.js';
 import { WorkbenchScene } from './scenes/workbenchScene.js';
 import { SummaryScene } from './scenes/summaryScene.js';
+import { MapScene } from './scenes/mapScene.js';
+import { SmelterScene } from './scenes/smelterScene.js';
+import { EventScene } from './scenes/eventScene.js';
 
 /** Keys the game uses that the browser would otherwise act on (scrolling, focus, menus). */
 const CAPTURED_KEYS = new Set([
@@ -105,8 +107,12 @@ async function boot() {
     }
   };
 
+  /** @type {Run | null} the run being played (debug handle) */
+  let activeRun = null;
+
   /** @param {Run} run */
   const routeRun = (run) => {
+    activeRun = run;
     const { phase } = run.state;
     if (run.over) {
       platform.remove('run.json').catch(() => {});
@@ -122,7 +128,7 @@ async function boot() {
           registry,
           chassisId: run.state.chassisId,
           mode: 'run',
-          subtitle: `Gauntlet node ${run.state.step + 1}/${GAUNTLET.length} · HP carries over · seed ${run.state.seed}`,
+          subtitle: `Stratum 1 · row ${(run.node?.row ?? 0) + 1}/${run.state.map.rows} · seed ${run.state.seed}`,
           makeCombat: (bus) => {
             // Save once each turn is set up, so a closed window resumes mid-fight.
             bus.on('turnReady', onChange);
@@ -143,6 +149,12 @@ async function boot() {
       scenes.change(new LootScene({ run, onChange, onDone }));
     } else if (phase === 'workbench') {
       scenes.change(new WorkbenchScene({ run, onChange, onDone }));
+    } else if (phase === 'smelter') {
+      scenes.change(new SmelterScene({ run, onChange, onDone }));
+    } else if (phase === 'event') {
+      scenes.change(new EventScene({ run, onChange, onDone }));
+    } else if (phase === 'map') {
+      scenes.change(new MapScene({ run, onTravel: onDone, onTitle: () => showTitle() }));
     }
   };
 
@@ -201,17 +213,17 @@ async function boot() {
         ? [
             {
               label: 'Continue run',
-              detail: `node ${saved.state.step + 1}/${GAUNTLET.length} · ${saved.state.phase} · HP ${saved.state.hp}/${saved.state.maxHp} · ◆ ${saved.state.aether}`,
+              detail: `row ${(saved.node?.row ?? -1) + 1}/${saved.state.map.rows} · ${saved.state.phase} · HP ${saved.state.hp}/${saved.state.maxHp} · ◆ ${saved.state.aether}`,
               accent: '#ffd27a',
               action: () => routeRun(saved),
             },
           ]
         : []),
       {
-        label: 'New Gauntlet run',
+        label: 'New run',
         detail: saved
           ? 'replaces the saved run'
-          : `The Tinker · ${GAUNTLET.length} nodes · combats, salvage, Workbenches`,
+          : 'The Tinker · Stratum 1 map · Smelters, Anomalies, Elites, the Crucible Engine',
         accent: '#ffd27a',
         action: () => startRun(),
       },
@@ -237,10 +249,19 @@ async function boot() {
   };
 
   // Debug/automation handle: lets devtools and smoke tests inspect the live scene.
-  /** @type {any} */ (window).aether = { registry, scenes, platform };
+  /** @type {any} */ (window).aether = {
+    registry,
+    scenes,
+    platform,
+    /** @param {Run} run */
+    route: (run) => routeRun(run),
+    get run() {
+      return activeRun;
+    },
+  };
 
   // Dev conveniences: ?encounter=enc_foreman&seed=ABCD-1234 jumps into a quick fight;
-  // ?run=new&seed=ABCD-1234 starts a Gauntlet run; add &deck=sandbox for the test deck.
+  // ?run=new&seed=ABCD-1234 starts a new run; add &deck=sandbox for the test deck.
   const requested = params.get('encounter');
   if (requested && registry.has(requested))
     startQuickFight(requested, params.get('seed') ?? undefined);

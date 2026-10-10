@@ -1,0 +1,101 @@
+[
+  {
+    "id": "bp_torque_wrench",
+    "name": "Torque Wrench",
+    "tier": "common",
+    "text": "Workbenches grant +1 Tool Charge.",
+    "effects": {
+      "toolCharges": 1
+    }
+  },
+  {
+    "id": "bp_expanded_hold",
+    "name": "Expanded Hold",
+    "tier": "common",
+    "text": "+2 Cargo Hold slots.",
+    "effects": {
+      "cargoSlots": 2
+    }
+  },
+  {
+    "id": "bp_magnetic_sorter",
+    "name": "Magnetic Sorter",
+    "tier": "common",
+    "text": "Crushing parts yields +50% Aether.",
+    "effects": {
+      "crushBonusPct": 50
+    }
+  },
+  {
+    "id": "bp_heat_sink",
+    "name": "Heat Sink",
+    "tier": "uncommon",
+    "text": "The first Overclocked card you play each combat does not Exhaust.",
+    "effects": {
+      "heatSink": true
+    }
+  },
+  {
+    "id": "bp_flywheel",
+    "name": "Spare Flywheel",
+    "tier": "common",
+    "text": "Gain 1 extra Energy on turn 1 of each combat.",
+    "effects": {
+      "firstTurnEnergy": 1
+    }
+  },
+  {
+    "id": "bp_faraday",
+    "name": "Faraday Lining",
+    "tier": "uncommon",
+    "text": "Ignore the first Suppression each combat.",
+    "effects": {
+      "faraday": true
+    }
+  },
+  {
+    "id": "bp_slag_filter",
+    "name": "Slag Filter",
+    "tier": "common",
+    "text": "The first Slag added to your piles each combat is Exhausted instead.",
+    "effects": {
+      "slagFilter": true
+    }
+  },
+  {
+    "id": "bp_scrap_magnet",
+    "name": "Scrap Magnet",
+    "tier": "uncommon",
+    "text": "Elites drop +1 component.",
+    "effects": {
+      "eliteBonusLoot": 1
+    }
+  },
+  {
+    "id": "bp_spare_gasket",
+    "name": "Spare Gasket",
+    "tier": "common",
+    "text": "Field Repair heals an additional 10% of max HP.",
+    "effects": {
+      "fieldRepairBonusPct": 10
+    }
+  },
+  {
+    "id": "bp_ballast_tank",
+    "name": "Ballast Tank",
+    "tier": "common",
+    "text": "Start each combat with 6 Block.",
+    "effects": {
+      "startBlock": 6
+    }
+  },
+  {
+    "id": "bp_salvage_rights",
+    "name": "Salvage Rights",
+    "tier": "uncommon",
+    "text": "Smelter prices are 20% lower.",
+    "effects": {
+      "smelterDiscountPct": 20
+    }
+  }
+]

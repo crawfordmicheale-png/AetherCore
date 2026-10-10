@@ -10,7 +10,6 @@ import { OVERCLOCK_LIMIT } from '../src/game/core/content.js';
 import { Rng } from '../src/game/core/rng.js';
 import { deriveCard } from '../src/game/model/card.js';
 import { MIN_DECK_SIZE } from '../src/game/run/economy.js';
-import { GAUNTLET } from '../src/game/run/gauntlet.js';
 import { Run, RunError } from '../src/game/run/run.js';
 import { registry } from './helpers.js';
 
@@ -93,9 +92,9 @@ test('random Workbench sessions conserve parts and keep every card legal', () =>
       uid: `x${i}`,
       defId: rng.pick(COMPONENTS),
     }));
-    run.state.step = GAUNTLET.findIndex((s) => s.type === 'workbench');
+
     run.state.hp = 30;
-    run.enterStep();
+    run.enterNode({ type: 'workbench' });
 
     for (let i = 0; i < 80; i++) {
       const before = JSON.stringify(run.state);

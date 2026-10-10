@@ -23,7 +23,15 @@ import { OPS, applyRider, attackAmount } from './ops.js';
  * @typedef {import('./ops.js').OpContext} OpContext
  *
  * @typedef {{ hp: number, maxHp: number, block: number, statuses: Record<string, number> }} Entity
- * @typedef {Entity & { uid: string, defId: string, name: string, patternIndex: number, alive: boolean }} EnemyState
+ * @typedef {Entity & { uid: string, defId: string, name: string, patternIndex: number, alive: boolean, pattern?: string[], fired?: string[] }} EnemyState
+ *   `pattern` overrides the definition's pattern after a phase change; `fired` lists triggers already used.
+ *
+ * @typedef {object} CombatMods  Run-level modifiers (from Blueprints) applied to this combat.
+ * @property {number} [startBlock]       Block at the start of combat (Ballast Tank).
+ * @property {number} [firstTurnEnergy]  Extra Energy on turn 1 (Spare Flywheel).
+ * @property {boolean} [heatSink]        First Overclocked card each combat doesn't Exhaust.
+ * @property {boolean} [faraday]         Ignore the first Suppression each combat.
+ * @property {boolean} [slagFilter]      The first Slag added each combat is Exhausted instead.
  * @typedef {(CardInstance & { kind: 'card' }) | { uid: string, kind: 'slag', defId: string }} CombatCard
  *
  * @typedef {object} CombatState
@@ -41,9 +49,12 @@ import { OPS, applyRider, attackAmount } from './ops.js';
  * @property {{ draw: string[], hand: string[], discard: string[], exhaust: string[] }} piles
  * @property {Entity} player
  * @property {EnemyState[]} enemies
- * @property {{ slot: string, source: string | null, untilTurn: number }[]} suppression
+ * @property {{ slot: string, source: string | null, untilTurn: number, cardUid?: string }[]} suppression
+ *   `cardUid` is the card a Seizure (slot `frame`) landed on.
  * @property {Record<string, number>} timesPlayed
  * @property {number} bonusLoot  Extra loot rolls earned this combat (Scavenger's Hook).
+ * @property {CombatMods} [mods]
+ * @property {Record<string, boolean>} [used]  Once-per-combat Blueprint effects already spent.
  *
  * @typedef {object} CombatEnv
  * @property {import('../core/registry.js').Registry} registry
@@ -89,6 +100,7 @@ export class Combat {
    * @param {string} opts.seed  Seeds this combat's shuffle, ai, and combat streams.
    * @param {number} [opts.energyPerTurn]
    * @param {number} [opts.drawPerTurn]
+   * @param {CombatMods} [opts.mods]
    */
   static create({
     registry,
@@ -99,6 +111,7 @@ export class Combat {
     seed,
     energyPerTurn = 3,
     drawPerTurn = 5,
+    mods = {},
   }) {
     const streams = RngStreams.fromSeed(seed);
     const encounter = registry.get(encounterId);
@@ -125,6 +138,8 @@ export class Combat {
       suppression: [],
       timesPlayed: {},
       bonusLoot: 0,
+      mods: { ...mods },
+      used: {},
     };
     for (const card of deck) {
       state.cards[card.uid] = /** @type {CombatCard} */ ({
@@ -134,24 +149,43 @@ export class Combat {
       state.piles.draw.push(card.uid);
     }
     const combat = new Combat(state, { registry, bus });
-    encounter.enemies.forEach((/** @type {string} */ defId, /** @type {number} */ i) => {
-      const def = registry.get(defId);
-      const hp = combat.rng('ai', (r) => r.int(def.hp[0], def.hp[1]));
-      const patternIndex =
-        def.start === 'random' ? combat.rng('ai', (r) => r.int(0, def.pattern.length - 1)) : 0;
-      state.enemies.push({
-        uid: `e${i + 1}`,
-        defId,
-        name: def.name,
-        hp,
-        maxHp: hp,
-        block: 0,
-        statuses: { ...(def.statuses ?? {}) },
-        patternIndex,
-        alive: true,
-      });
-    });
+    for (const defId of encounter.enemies) combat.spawnEnemy(defId);
     return combat;
+  }
+
+  /**
+   * Adds an enemy to the fight (at creation, or summoned mid-combat).
+   * @param {string} defId
+   * @returns {EnemyState}
+   */
+  spawnEnemy(defId) {
+    const def = this.registry.get(defId);
+    const hp = this.rng('ai', (r) => r.int(def.hp[0], def.hp[1]));
+    const patternIndex =
+      def.start === 'random' ? this.rng('ai', (r) => r.int(0, def.pattern.length - 1)) : 0;
+    /** @type {EnemyState} */
+    const enemy = {
+      uid: `e${this.state.enemies.length + 1}`,
+      defId,
+      name: def.name,
+      hp,
+      maxHp: hp,
+      block: 0,
+      statuses: { ...(def.statuses ?? {}) },
+      patternIndex,
+      alive: true,
+    };
+    this.state.enemies.push(enemy);
+    return enemy;
+  }
+
+  /**
+   * The move pattern an enemy is currently cycling (phase changes can replace it).
+   * @param {EnemyState} enemy
+   * @returns {string[]}
+   */
+  patternOf(enemy) {
+    return enemy.pattern ?? this.registry.get(enemy.defId).pattern;
   }
 
   /** Shuffles the deck (Innate cards on top) and starts turn 1. */
@@ -164,6 +198,11 @@ export class Combat {
     this.state.piles.draw = [...draw.filter((uid) => !innate.includes(uid)), ...innate];
     this.emit({ type: 'combatStarted', encounterId: this.state.encounterId });
     this.startPlayerTurn();
+    const startBlock = this.state.mods?.startBlock ?? 0;
+    if (startBlock > 0) {
+      this.gainBlock('player', startBlock);
+      this.emit({ type: 'blueprintTriggered', id: 'startBlock' });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -245,6 +284,7 @@ export class Combat {
       registry: this.registry,
       suppression: { mod: this.isSuppressed('mod'), coreRider: this.isSuppressed('coreRider') },
       rustCount: this.rustCount(),
+      seized: this.state.suppression.some((s) => s.slot === 'frame' && s.cardUid === uid),
       player: this.state.player,
       otherHandElements: this.state.piles.hand
         .filter((h) => h !== uid)
@@ -311,7 +351,8 @@ export class Combat {
     const enemy = this.enemy(uid);
     if (!enemy?.alive) return null;
     const def = this.registry.get(enemy.defId);
-    const moveId = def.pattern[enemy.patternIndex % def.pattern.length];
+    const pattern = this.patternOf(enemy);
+    const moveId = pattern[enemy.patternIndex % pattern.length];
     const move = def.moves.find((/** @type {any} */ m) => m.id === moveId);
     /** @type {IntentView} */
     const view = { moveId, name: move.name, intent: move.intent };
@@ -392,11 +433,15 @@ export class Combat {
     }
 
     // The card leaves play. Exhaust is evaluated now, with only active components.
-    const exhaust = this.keywordsOf(uid).includes('exhaust');
+    let exhaust = this.keywordsOf(uid).includes('exhaust');
+    const after = card.kind === 'card' ? this.derive(uid) : null;
+    // Heat Sink (Blueprint): the first Overclocked card each combat doesn't Exhaust.
+    if (exhaust && after && after.overclock > 0 && this.useOnce('heatSink')) exhaust = false;
     if (exhaust) {
       this.state.piles.exhaust.push(uid);
-      const overclock = card.kind === 'card' ? this.derive(uid).overclock : 0;
-      this.emit({ type: 'cardExhausted', uid, overclock });
+      this.emit({ type: 'cardExhausted', uid, overclock: after?.overclock ?? 0 });
+      if (after?.onExhaust.length && !this.over)
+        this.resolve(after.onExhaust, { source: 'player', cardUid: uid });
     } else {
       this.state.piles.discard.push(uid);
       this.emit({ type: 'cardDiscarded', uid });
@@ -415,6 +460,15 @@ export class Combat {
       const ops = this.registry.get(c.defId).endOfTurnInHand;
       if (ops) this.resolve(ops, { source: null });
       if (this.over) return;
+    }
+
+    // Crucible Heat: each Slag still in hand burns the player.
+    const heat = this.aliveEnemies().reduce((n, e) => n + (e.statuses.crucible ?? 0), 0);
+    if (heat > 0) {
+      const slag = hand.filter((uid) => this.state.cards[uid].kind === 'slag').length;
+      for (let i = 0; i < slag && !this.over; i++)
+        this.dealDamage(null, 'player', heat, { kind: 'raw' });
+      if (this.checkEnd()) return;
     }
 
     this.tickEndOfTurn('player');
@@ -456,10 +510,19 @@ export class Combat {
     // Searing and Ward last until the start of your next turn.
     this.setStatus('player', 'searing', 0);
     this.setStatus('player', 'ward', 0);
-    s.energy = s.energyPerTurn;
+    s.energy = s.energyPerTurn + (s.turn === 1 ? (s.mods?.firstTurnEnergy ?? 0) : 0);
     this.emit({ type: 'turnStarted', turn: s.turn });
     this.emit({ type: 'energyChanged', energy: s.energy });
     this.draw(s.drawPerTurn);
+    // Seizure lands on a random composite card in the new hand.
+    const seizure = s.suppression.find((x) => x.slot === 'frame' && !x.cardUid);
+    if (seizure) {
+      const cards = s.piles.hand.filter((uid) => s.cards[uid].kind === 'card');
+      if (cards.length) {
+        seizure.cardUid = this.rng('combat', (r) => r.pick(cards));
+        this.emit({ type: 'cardSeized', uid: seizure.cardUid });
+      }
+    }
     // The turn is fully set up (hand drawn): a safe point to autosave.
     this.emit({ type: 'turnReady', turn: s.turn });
   }
@@ -473,7 +536,8 @@ export class Combat {
       if (fortified > 0) this.gainBlock(enemy.uid, fortified);
 
       const def = this.registry.get(enemy.defId);
-      const moveId = def.pattern[enemy.patternIndex % def.pattern.length];
+      const pattern = this.patternOf(enemy);
+      const moveId = pattern[enemy.patternIndex % pattern.length];
       const move = def.moves.find((/** @type {any} */ m) => m.id === moveId);
       this.emit({
         type: 'enemyMove',
@@ -483,7 +547,10 @@ export class Combat {
         intent: move.intent,
       });
       this.resolve(move.ops, { source: enemy.uid });
-      enemy.patternIndex = (enemy.patternIndex + 1) % def.pattern.length;
+      // A phase change during the move resets the index to 0; don't skip its first move.
+      if (pattern === this.patternOf(enemy)) {
+        enemy.patternIndex = (enemy.patternIndex + 1) % pattern.length;
+      }
       if (this.over) return;
 
       if (enemy.alive) this.tickEndOfTurn(enemy.uid);
@@ -673,6 +740,35 @@ export class Combat {
 
     if (targetId !== 'player' && target.hp <= 0) this.killEnemy(targetId, opts.ctx);
     else if (targetId === 'player' && target.hp <= 0) this.checkEnd();
+    else if (targetId !== 'player') this.checkTriggers(/** @type {EnemyState} */ (target));
+  }
+
+  /**
+   * HP-threshold triggers (phase changes, summons). Each fires once.
+   * @param {EnemyState} enemy
+   */
+  checkTriggers(enemy) {
+    const triggers = this.registry.get(enemy.defId).triggers ?? [];
+    for (const trigger of triggers) {
+      if (enemy.fired?.includes(trigger.id) || !enemy.alive || this.over) continue;
+      if ((enemy.hp / enemy.maxHp) * 100 >= trigger.when.hpBelowPct) continue;
+      enemy.fired = [...(enemy.fired ?? []), trigger.id];
+      this.emit({ type: 'enemyPhase', uid: enemy.uid, id: trigger.id, text: trigger.text ?? null });
+      this.resolve(trigger.ops, { source: enemy.uid });
+    }
+  }
+
+  /**
+   * Spends a once-per-combat Blueprint effect if the run has it.
+   * @param {keyof CombatMods} key
+   * @returns {boolean} true if the effect applies now
+   */
+  useOnce(key) {
+    const s = this.state;
+    if (!s.mods?.[key] || s.used?.[key]) return false;
+    s.used = { ...(s.used ?? {}), [key]: true };
+    this.emit({ type: 'blueprintTriggered', id: key });
+    return true;
   }
 
   /**
@@ -796,6 +892,12 @@ export class Combat {
     for (let i = 0; i < count; i++) {
       const uid = `s${this.state.nextId++}`;
       this.state.cards[uid] = { uid, kind: 'slag', defId: slagId };
+      // Slag Filter (Blueprint): the first Slag each combat goes straight to Exhaust.
+      if (this.useOnce('slagFilter')) {
+        piles.exhaust.push(uid);
+        this.emit({ type: 'slagAdded', uid, defId: slagId, pile: 'exhaust', source });
+        continue;
+      }
       if (pile === 'draw') {
         const at = this.rng('shuffle', (r) => r.int(0, piles.draw.length));
         piles.draw.splice(at, 0, uid);
@@ -828,6 +930,8 @@ export class Combat {
    * @param {string | null} source
    */
   suppress(slot, duration, source) {
+    // Faraday Lining (Blueprint): ignore the first Suppression each combat.
+    if (this.useOnce('faraday')) return;
     const untilTurn = this.state.turn + duration;
     const existing = this.state.suppression.find((s) => s.slot === slot);
     if (existing) existing.untilTurn = Math.max(existing.untilTurn, untilTurn);

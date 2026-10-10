@@ -45,7 +45,13 @@ Each milestone has **exit criteria**; do not start the next milestone's content 
 
 **Exit:** Playtesters can chain 3 combats with a Workbench between them, and at least half of them build an Overclocked card voluntarily.
 
-## M3: The Run (2–3 weeks)
+## M3: The Run (2–3 weeks) ✅
+
+> **Done.** The Gauntlet is replaced by a seeded **Stratum map** (15 rows × 7 columns, 6 non-crossing paths, fixed Workbench rows at the midpoint and before the boss, minimum rows per node type, no back-to-back Workbenches/Smelters, at most one Elite per 4-row stretch). The **Smelter** sells 6 tier-weighted parts (one on sale), upgrades Frame Capacity (+2 max per Frame), fuses three same-tier parts into a next-tier part of a chosen kind, and removes cards. **4 Anomalies** (Buried Crate, Hungry Servitor, Conveyor Lottery, Rogue Workbench). **3 Elites** (Foreman Gantry now summons at 50%, Slagmaw, Press Warden with Frame Seizure), **11 Blueprints** (passive run effects; Elites and the boss offer a choice of 3), and the **Crucible Engine** boss with two HP-triggered phases. New engine pieces: enemy `triggers`, `summon` and `setPattern` ops, Frame suppression, the `cardExhausted` hook, Power multipliers, and boss Prototype rewards. The run saves at every node boundary and on each combat `turnReady` (`RUN_VERSION` 2). `tools/simulate.js` plays full runs headlessly with a greedy bot and runs in CI.
+>
+> **Deviations:** 11 Blueprints instead of 10. The simulator found death spirals (Molten Slag piling up against the all-Kinetic starter deck, Burn stacking from Mite deaths, the boss's HP), so Molten Slag is now Ethereal and several enemy numbers were tuned (see CONTENT.md). The greedy bot wins about 19% of runs (400-run sample), with most deaths at the Crucible Engine; that is a floor for a bot that never plans ahead, not a target. Fused Slag, Magnet Lock, and the Smelter's Slag-only removal are still unbuilt (removal works on any card).
+>
+> **Exit check:** Automated browser runs cover map → combat → salvage → Smelter → Anomaly → Elite salvage with no console errors, and save/resume mid-combat is covered by tests. Run length (25–35 minutes) needs human playtesters.
 
 * Map generator (7-column grid, path rules, node weights) and map scene/side panel.
 * Smelter (buy, Capacity Upgrade, Fusion, Slag removal); 4 Anomalies.

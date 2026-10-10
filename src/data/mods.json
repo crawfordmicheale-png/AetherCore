@@ -130,5 +130,24 @@
     "text": "If this kills an enemy, that enemy drops +1 loot roll.",
     "hooks": { "enemyKilled": [{ "op": "bonusLoot", "n": 1 }] },
     "unlock": "base"
+  },
+  {
+    "id": "mod_feedback",
+    "name": "Feedback Loop",
+    "tier": "refined",
+    "weight": 1,
+    "text": "When this card Exhausts, gain 1 Energy.",
+    "hooks": { "cardExhausted": [{ "op": "gainEnergy", "n": 1 }] },
+    "unlock": "base"
+  },
+  {
+    "id": "mod_overdrive",
+    "name": "Overdrive",
+    "tier": "prototype",
+    "weight": 2,
+    "text": "Double the Core's Power. Always Exhausts.",
+    "keywords": ["exhaust"],
+    "modifiers": [{ "stat": "power", "mul": 2 }],
+    "unlock": "base"
   }
 ]

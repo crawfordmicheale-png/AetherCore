@@ -60,11 +60,11 @@ test('Block absorbs enemy attacks and is removed at the start of the next turn',
 
 test('Strength adds to each hit, and intents show the final number', () => {
   const c = setupCombat({ hand: [], encounter: 'enc_hound' });
-  e1(c).patternIndex = 1; // Howl: +2 Strength
+  e1(c).patternIndex = 1; // Howl: +1 Strength
   assert.equal(c.intentOf('e1')?.intent, 'buff');
   c.endTurn();
-  assert.equal(e1(c).statuses.strength, 2);
-  assert.deepEqual([c.intentOf('e1')?.damage, c.intentOf('e1')?.hits], [6, 2]);
+  assert.equal(e1(c).statuses.strength, 1);
+  assert.deepEqual([c.intentOf('e1')?.damage, c.intentOf('e1')?.hits], [5, 2]);
 });
 
 test('Burn ticks at the end of the owner turn, ignores Block, and decays', () => {
@@ -171,7 +171,7 @@ test('Ward prevents the next debuff', () => {
   c.playCard('h1');
   assert.equal(c.state.player.statuses.ward, 1);
   e1(c).hp = 1;
-  c.playCard('h2', 'e1'); // Boiler Mite dies: Burn 3 on you, blocked by Ward
+  c.playCard('h2', 'e1'); // Boiler Mite dies: Burn 2 on you, blocked by Ward
   assert.equal(c.state.player.statuses.burn, undefined);
   assert.equal(c.state.player.statuses.ward, undefined);
 });
@@ -181,7 +181,7 @@ test('Boiler Mite death applies Burn to the player', () => {
   e1(c).hp = 3;
   c.playCard('h1', 'e1');
   assert.equal(e1(c).alive, false);
-  assert.equal(c.state.player.statuses.burn, 3);
+  assert.equal(c.state.player.statuses.burn, 2);
 });
 
 test('Overclocked cards Exhaust; an EMP that removes the excess weight saves them', () => {
@@ -243,9 +243,9 @@ test('Molten Slag: Kinetic plays hurt, end of turn Burns; Grounding Rod clears i
   });
   c.addSlag('slag_molten', 1, 'hand', 'test');
   c.playCard('h1', 'e1');
-  assert.equal(c.state.player.hp, 47);
+  assert.equal(c.state.player.hp, 48);
   c.playCard('h2', 'e1'); // Thermal: no damage; Grounding Rod exhausts the Slag
-  assert.equal(c.state.player.hp, 47);
+  assert.equal(c.state.player.hp, 48);
   assert.equal(c.state.piles.exhaust.length, 1);
   assert.ok(c.state.piles.exhaust[0].startsWith('s'));
 });

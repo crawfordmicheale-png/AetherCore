@@ -65,7 +65,7 @@
           {
             "op": "applyStatus",
             "status": "strength",
-            "stacks": 2,
+            "stacks": 1,
             "target": "self"
           }
         ]
@@ -100,7 +100,7 @@
       {
         "op": "applyStatus",
         "status": "burn",
-        "stacks": 3,
+        "stacks": 2,
         "target": "player"
       }
     ]
@@ -135,7 +135,7 @@
         "ops": [
           {
             "op": "damage",
-            "amount": 7
+            "amount": 6
           }
         ]
       }
@@ -183,7 +183,7 @@
     "id": "el_foreman_gantry",
     "name": "Foreman Gantry",
     "tier": "elite",
-    "hp": [80, 80],
+    "hp": [72, 72],
     "start": "first",
     "loot": {
       "favor": "mod"
@@ -225,6 +225,255 @@
         ]
       }
     ],
-    "pattern": ["emp", "slam", "rivet"]
+    "pattern": ["emp", "slam", "rivet"],
+    "triggers": [
+      {
+        "id": "call_crew",
+        "when": {
+          "hpBelowPct": 50
+        },
+        "text": "The Foreman calls in a Scrapper Drone!",
+        "ops": [
+          {
+            "op": "summon",
+            "enemy": "en_scrapper_drone"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "el_slagmaw",
+    "name": "Slagmaw",
+    "tier": "elite",
+    "hp": [82, 82],
+    "start": "first",
+    "loot": {
+      "elements": ["thermal"],
+      "favor": "core"
+    },
+    "moves": [
+      {
+        "id": "spew",
+        "name": "Spew Slag",
+        "intent": "slag",
+        "ops": [
+          {
+            "op": "addSlag",
+            "slag": "slag_molten",
+            "count": 2,
+            "pile": "draw"
+          }
+        ]
+      },
+      {
+        "id": "bite",
+        "name": "Crucible Bite",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 9
+          }
+        ]
+      },
+      {
+        "id": "devour",
+        "name": "Devour Scrap",
+        "intent": "buff",
+        "ops": [
+          {
+            "op": "heal",
+            "amount": 8,
+            "target": "self"
+          },
+          {
+            "op": "block",
+            "amount": 6
+          }
+        ]
+      }
+    ],
+    "pattern": ["spew", "bite", "devour"]
+  },
+  {
+    "id": "el_press_warden",
+    "name": "Press Warden",
+    "tier": "elite",
+    "hp": [70, 70],
+    "start": "first",
+    "statuses": {
+      "plated": 4
+    },
+    "loot": {
+      "elements": ["kinetic"],
+      "favor": "frame"
+    },
+    "moves": [
+      {
+        "id": "seize",
+        "name": "Seize",
+        "intent": "suppress",
+        "ops": [
+          {
+            "op": "suppress",
+            "slot": "frame",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "id": "crush",
+        "name": "Hydraulic Crush",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 16
+          }
+        ]
+      },
+      {
+        "id": "brace",
+        "name": "Reinforce Plates",
+        "intent": "defend",
+        "ops": [
+          {
+            "op": "block",
+            "amount": 12
+          },
+          {
+            "op": "applyStatus",
+            "status": "plated",
+            "stacks": 2,
+            "target": "self"
+          }
+        ]
+      }
+    ],
+    "pattern": ["seize", "crush", "brace"]
+  },
+  {
+    "id": "boss_crucible",
+    "name": "The Crucible Engine",
+    "tier": "boss",
+    "hp": [160, 160],
+    "start": "first",
+    "loot": {
+      "elements": ["thermal"]
+    },
+    "moves": [
+      {
+        "id": "pour",
+        "name": "Pour",
+        "intent": "slag",
+        "ops": [
+          {
+            "op": "addSlag",
+            "slag": "slag_molten",
+            "count": 1,
+            "pile": "draw"
+          }
+        ]
+      },
+      {
+        "id": "smelt",
+        "name": "Smelt Strike",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 12
+          }
+        ]
+      },
+      {
+        "id": "ignite",
+        "name": "Ignite",
+        "intent": "debuff",
+        "ops": [
+          {
+            "op": "applyStatus",
+            "status": "burn",
+            "stacks": 2,
+            "target": "player"
+          }
+        ]
+      },
+      {
+        "id": "emp",
+        "name": "Overcharge Pulse",
+        "intent": "suppress",
+        "ops": [
+          {
+            "op": "suppress",
+            "slot": "mod",
+            "duration": 1
+          }
+        ]
+      },
+      {
+        "id": "barrage",
+        "name": "Molten Barrage",
+        "intent": "attack",
+        "ops": [
+          {
+            "op": "damage",
+            "amount": 5,
+            "hits": 3
+          }
+        ]
+      },
+      {
+        "id": "rust_pour",
+        "name": "Pour Rust",
+        "intent": "slag",
+        "ops": [
+          {
+            "op": "addSlag",
+            "slag": "slag_rust",
+            "count": 3,
+            "pile": "hand"
+          }
+        ]
+      }
+    ],
+    "pattern": ["pour", "smelt", "ignite"],
+    "triggers": [
+      {
+        "id": "overheat",
+        "when": {
+          "hpBelowPct": 50
+        },
+        "text": "The Crucible Engine overheats: Fortified 4, new pattern!",
+        "ops": [
+          {
+            "op": "applyStatus",
+            "status": "fortified",
+            "stacks": 4,
+            "target": "self"
+          },
+          {
+            "op": "setPattern",
+            "pattern": ["emp", "barrage", "rust_pour"]
+          }
+        ]
+      },
+      {
+        "id": "meltdown",
+        "when": {
+          "hpBelowPct": 25
+        },
+        "text": "Meltdown! Slag left in your hand now burns you.",
+        "ops": [
+          {
+            "op": "applyStatus",
+            "status": "crucible",
+            "stacks": 2,
+            "target": "self"
+          }
+        ]
+      }
+    ]
   }
 ]

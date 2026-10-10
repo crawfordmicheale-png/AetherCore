@@ -41,6 +41,7 @@ const STATUS_COLORS = {
   ward: '#b89aff',
   plated: '#c0c0c0',
   fortified: '#a0b0c0',
+  crucible: '#ff5a2a',
 };
 
 export class CombatScene {
@@ -179,7 +180,9 @@ export class CombatScene {
       const what =
         e.slot === 'mod'
           ? 'EMP: your Mods are offline next turn'
-          : 'Dampening Field: Core riders are offline next turn';
+          : e.slot === 'frame'
+            ? 'Seizure: one card in your next hand will be jammed'
+            : 'Dampening Field: Core riders are offline next turn';
       this.toast(`${who} · ${what}`, '#ffe066', 3.2);
     });
     bus.on('turnStarted', () => {
@@ -198,6 +201,32 @@ export class CombatScene {
     bus.on('shuffled', () =>
       this.toast('Discard pile shuffled into the draw pile', '#c8b8a0', 1.8),
     );
+    bus.on('enemyPhase', (e) => {
+      if (e.text) this.toast(/** @type {string} */ (e.text), '#ff9a6a', 3.2);
+      const pos = this.anchorOf(/** @type {string} */ (e.uid));
+      this.fx.sparks(pos.x, pos.y + 80, 80);
+      this.fx.shake(0.4);
+    });
+    bus.on('enemySummoned', (e) => {
+      const uid = /** @type {string} */ (e.uid);
+      this.displayHp[uid] = this.combat.enemy(uid)?.hp ?? 0;
+      this.toast(`${this.combat.enemy(uid)?.name ?? 'An enemy'} joins the fight!`, '#ff9a6a', 2.4);
+    });
+    bus.on('cardSeized', (e) => {
+      const name = this.combat.derive(/** @type {string} */ (e.uid)).name;
+      this.toast(`Seized: ${name} costs +1 and has -1 Capacity this turn`, '#ffe066', 3);
+    });
+    /** @type {Record<string, string>} */
+    const blueprintText = {
+      startBlock: 'Ballast Tank: +6 Block',
+      heatSink: 'Heat Sink: your Overclocked card stays in the deck',
+      faraday: 'Faraday Lining absorbs the Suppression',
+      slagFilter: 'Slag Filter catches the first Slag',
+    };
+    bus.on('blueprintTriggered', (e) => {
+      const text = blueprintText[/** @type {string} */ (e.id)];
+      if (text) this.toast(text, '#9fe0ff', 2.4);
+    });
     bus.on('combatWon', () => this.toast('Victory!', '#ffd27a', 2));
     bus.on('combatLost', () => this.fx.shake(1));
   }
@@ -852,7 +881,7 @@ export class CombatScene {
     // Suppression banner and the static wave across the hand.
     if (s.suppression.length) {
       const names = s.suppression
-        .map((x) => (x.slot === 'mod' ? 'Mods' : 'Core riders'))
+        .map((x) => (x.slot === 'mod' ? 'Mods' : x.slot === 'frame' ? 'a Frame' : 'Core riders'))
         .join(' and ');
       label(ctx, LOGICAL_WIDTH / 2, 640, `⚡ ${names} suppressed this turn`, {
         font: FONT.ui(20, 700),
@@ -1190,7 +1219,12 @@ function intentLabel(intent, registry) {
       return { text: `DEBUFF ${STATUS_DEFS[intent.status ?? '']?.name ?? ''}`, color: '#c08aff' };
     case 'suppress':
       return {
-        text: intent.slot === 'mod' ? '⚡ EMP: Mods' : '⚡ DAMPEN: Riders',
+        text:
+          intent.slot === 'mod'
+            ? '⚡ EMP: Mods'
+            : intent.slot === 'frame'
+              ? '⚡ SEIZE: Frame'
+              : '⚡ DAMPEN: Riders',
         color: '#ffe066',
       };
     case 'slag':
@@ -1219,7 +1253,9 @@ function intentSentence(intent, registry) {
     case 'suppress':
       return intent.slot === 'mod'
         ? 'Disables all Mods on your cards during your next turn.'
-        : 'Disables Core element riders on your cards during your next turn.';
+        : intent.slot === 'frame'
+          ? 'Seizes one card in your next hand: +1 cost and -1 Capacity for that turn.'
+          : 'Disables Core element riders on your cards during your next turn.';
     case 'slag':
       return `Adds ${intent.count} ${registry.get(intent.slag ?? '').name} to your piles.`;
     default:

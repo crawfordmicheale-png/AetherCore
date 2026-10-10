@@ -5,7 +5,7 @@
  */
 import { RunError } from '../game/run/run.js';
 import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from '../render/canvas.js';
-import { FONT, fillRound, inRect, label, panel } from '../render/draw.js';
+import { FONT, fillRound, inRect, label, panel, wrapText } from '../render/draw.js';
 import { Fx } from '../render/fx.js';
 import { PART_H, PART_W, drawPart, partSummary } from '../render/partRenderer.js';
 import { Button } from '../ui/button.js';
@@ -15,6 +15,10 @@ import { drawRunHeader } from './runHud.js';
 const TRAY = { x: 120, y: 250 };
 const TRAY_GAP = 24;
 const CRUSHER = { x: 120, y: 760, w: 420, h: 120 };
+/** Elite/boss rewards row: the Prototype pick, then the Blueprint choice. */
+const REWARDS_Y = 430;
+const BP_W = 400;
+const BP_H = 120;
 
 export class LootScene {
   /**
@@ -149,11 +153,61 @@ export class LootScene {
     });
   }
 
+  get loot() {
+    return this.run.state.loot;
+  }
+
+  /** @param {number} i */
+  pickRect(i) {
+    return { x: TRAY.x + i * (PART_W + TRAY_GAP), y: REWARDS_Y + 34, w: PART_W, h: PART_H };
+  }
+
+  /** @param {number} i */
+  blueprintRect(i) {
+    const y = this.loot?.pick ? REWARDS_Y + 34 + PART_H + 60 : REWARDS_Y + 34;
+    return { x: TRAY.x + i * (BP_W + 20), y, w: BP_W, h: BP_H };
+  }
+
+  /**
+   * Clicks on the reward rows. Returns true if handled.
+   * @param {number} x
+   * @param {number} y
+   */
+  clickRewards(x, y) {
+    const loot = this.loot;
+    const pickIndex = (loot?.pick ?? []).findIndex((_, i) => inRect(this.pickRect(i), x, y));
+    if (loot?.pick && pickIndex >= 0) {
+      const part = loot.pick[pickIndex];
+      this.attempt(() => {
+        this.run.choosePick(/** @type {string} */ (part.uid));
+        this.say(`${this.registry.get(part.defId).name} goes into your Cargo Hold.`, '#ffd27a');
+      });
+      return true;
+    }
+    const bpIndex = (loot?.blueprints ?? []).findIndex((_, i) =>
+      inRect(this.blueprintRect(i), x, y),
+    );
+    if (loot?.blueprints && bpIndex >= 0) {
+      const id = loot.blueprints[bpIndex];
+      this.attempt(() => {
+        this.run.takeBlueprint(id);
+        this.say(`Blueprint acquired: ${this.registry.get(id).name}.`, '#9fe0ff');
+      });
+      return true;
+    }
+    return false;
+  }
+
   leave() {
-    if (this.tray.length > 0 && this.time >= this.leaveConfirmUntil) {
+    const unclaimed = [
+      this.tray.length ? `${this.tray.length} part(s)` : '',
+      this.loot?.pick ? 'the Prototype pick' : '',
+      this.loot?.blueprints?.length ? 'the Blueprint' : '',
+    ].filter(Boolean);
+    if (unclaimed.length && this.time >= this.leaveConfirmUntil) {
       this.leaveConfirmUntil = this.time + 2.5;
       this.say(
-        `${this.tray.length} part(s) will be left behind. Press again to continue.`,
+        `You'll leave behind ${unclaimed.join(' and ')}. Press again to continue.`,
         '#ffb070',
       );
       return;
@@ -174,6 +228,7 @@ export class LootScene {
     const { x, y } = this.pointer;
     if (event.type === 'pointerdown' && event.button === 0) {
       for (const b of this.buttons) if (b.click(x, y)) return;
+      if (this.clickRewards(x, y)) return;
       const tray = this.trayAt(x, y);
       const cargo = this.cargo.itemAt(x, y);
       const uid = tray ?? cargo;
@@ -271,12 +326,13 @@ export class LootScene {
       { font: FONT.ui(15), align: 'center', color: '#a87a6a' },
     );
 
+    this.renderRewards(ctx);
     const ui = stage.ctx('ui');
     for (const b of this.buttons) b.draw(ui, this.pointer);
     const part = this.selectedPart();
     if (part) {
       const def = this.registry.get(part.defId);
-      panel(ui, 600, 640, 640, {
+      panel(ui, 600, 760, 640, {
         title: `${def.name} (${this.registry.kindOf(part.defId)}, ${def.tier})`,
         lines: [
           partSummary(this.registry, part),
@@ -297,7 +353,10 @@ export class LootScene {
       },
     );
     if (this.message && this.message.until > this.time) {
-      label(ui, 120, 720, this.message.text, { font: FONT.ui(20, 600), color: this.message.color });
+      label(ui, 120, 1000, this.message.text, {
+        font: FONT.ui(20, 600),
+        color: this.message.color,
+      });
     }
     if (dragging) {
       const p = [...this.tray, ...this.run.state.cargo.items].find((q) => q.uid === dragging.uid);
@@ -307,5 +366,51 @@ export class LootScene {
         });
     }
     this.fx.render(stage.ctx('fx'));
+  }
+
+  /** @param {CanvasRenderingContext2D} ctx */
+  renderRewards(ctx) {
+    const loot = this.loot;
+    if (!loot) return;
+    if (loot.pick) {
+      label(ctx, TRAY.x, REWARDS_Y + 20, 'Boss reward: keep one Prototype part', {
+        font: FONT.ui(22, 700),
+        color: '#d08aff',
+      });
+      loot.pick.forEach((part, i) => {
+        const r = this.pickRect(i);
+        drawPart(ctx, this.registry, part, r.x, r.y, {
+          hover: inRect(r, this.pointer.x, this.pointer.y),
+        });
+      });
+    }
+    if (loot.blueprints) {
+      const first = this.blueprintRect(0);
+      label(ctx, TRAY.x, first.y - 14, 'Choose one Blueprint (permanent for this run)', {
+        font: FONT.ui(22, 700),
+        color: '#9fe0ff',
+      });
+      loot.blueprints.forEach((id, i) => {
+        const r = this.blueprintRect(i);
+        const bp = this.registry.get(id);
+        const hover = inRect(r, this.pointer.x, this.pointer.y);
+        fillRound(ctx, r.x, r.y, r.w, r.h, 12, hover ? '#22384a' : '#1a2a36');
+        ctx.strokeStyle = hover ? '#9fe0ff' : '#3a6a8a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        label(ctx, r.x + 16, r.y + 32, bp.name, { font: FONT.ui(20, 700), color: '#dff4ff' });
+        label(ctx, r.x + r.w - 14, r.y + 30, bp.tier, {
+          font: FONT.mono(12),
+          align: 'right',
+          color: '#7aa8c8',
+        });
+        ctx.font = FONT.ui(15);
+        wrapText(ctx, bp.text, r.w - 32)
+          .slice(0, 3)
+          .forEach((line, j) =>
+            label(ctx, r.x + 16, r.y + 62 + j * 20, line, { font: FONT.ui(15), color: '#b8d4e8' }),
+          );
+      });
+    }
   }
 }

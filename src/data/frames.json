@@ -172,5 +172,33 @@
     "text": "Gain the Core's Defend rider. Draw 1.",
     "unlock": "base",
     "utility": "relay"
+  },
+  {
+    "id": "frame_lance",
+    "name": "Aether Lance",
+    "tier": "prototype",
+    "verb": "attack",
+    "cost": 2,
+    "capacity": 3,
+    "target": "single",
+    "base": 5,
+    "hits": 1,
+    "coreScaling": 1.5,
+    "keywords": [],
+    "unlock": "base"
+  },
+  {
+    "id": "frame_bastion",
+    "name": "Bastion",
+    "tier": "prototype",
+    "verb": "defend",
+    "cost": 3,
+    "capacity": 4,
+    "target": "self",
+    "base": 14,
+    "hits": 1,
+    "coreScaling": 1.5,
+    "keywords": [],
+    "unlock": "base"
   }
 ]

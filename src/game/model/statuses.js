@@ -38,6 +38,11 @@ export const STATUS_DEFS = Object.freeze({
     debuff: false,
     text: 'Attack damage taken is reduced by X per hit; -1 per hit received.',
   },
+  crucible: {
+    name: 'Crucible Heat',
+    debuff: false,
+    text: 'At the end of your turn, you take X damage for each Slag in your hand.',
+  },
   fortified: {
     name: 'Fortified',
     debuff: false,

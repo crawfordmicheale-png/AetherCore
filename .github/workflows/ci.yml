@@ -23,3 +23,5 @@ jobs:
       - run: npm run typecheck
       - run: npm run validate-data
       - run: npm test
+      # Balance simulator smoke test: full headless runs must complete without errors.
+      - run: npm run simulate -- --runs 50 --quiet

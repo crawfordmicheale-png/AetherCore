@@ -19,6 +19,7 @@ import { REINFORCE_BONUS } from './statuses.js';
  * @property {import('../core/registry.js').Registry} registry
  * @property {{ mod?: boolean, coreRider?: boolean }} [suppression] Active slot suppression for this card.
  * @property {number} [rustCount]      Rust Slag in hand (-1 Capacity each).
+ * @property {boolean} [seized]        Seizure on this card's Frame: cost +1, Capacity -1.
  * @property {{ statuses: Record<string, number> }} [player]
  * @property {string[]} [otherHandElements] Core elements of the *other* cards in hand.
  * @property {number} [timesPlayed]    Times this card was played this combat.
@@ -48,6 +49,8 @@ import { REINFORCE_BONUS } from './statuses.js';
  * @property {{ mod: boolean, coreRider: boolean }} suppressed
  * @property {any[]} onPlay           Ops to run after the card's main effect (from active components).
  * @property {any[]} onKill           Ops to run when this card kills an enemy.
+ * @property {any[]} onExhaust        Ops to run when this card Exhausts.
+ * @property {boolean} seized
  * @property {string[]} modText       Rules text contributed by the active Mod.
  * @property {boolean} hasTargetConditions True if hovering a target may change the numbers.
  * @property {BreakdownLine[]} breakdown
@@ -160,7 +163,8 @@ export function deriveCard(card, ctx) {
 
   // 2. Capacity and weight.
   const rust = ctx.rustCount ?? 0;
-  const capacity = Math.max(0, frame.capacity + (card.frame.capacityBonus ?? 0) - rust);
+  const seized = ctx.seized ? 1 : 0;
+  const capacity = Math.max(0, frame.capacity + (card.frame.capacityBonus ?? 0) - rust - seized);
   const coreWeight = Math.max(0, core.weight - (card.core.tuned ? 1 : 0));
   const modWeight = activeMod ? Math.max(0, activeMod.weight - (card.mod?.tuned ? 1 : 0)) : 0;
   const weight = coreWeight + modWeight;
@@ -168,7 +172,7 @@ export function deriveCard(card, ctx) {
 
   // 3. Cost. Jammed is previewed on every card because it applies to the next card played.
   const jammed = (ctx.player?.statuses.jammed ?? 0) > 0 ? 1 : 0;
-  const cost = Math.max(0, frame.cost + sumMods('cost') + jammed);
+  const cost = Math.max(0, frame.cost + sumMods('cost') + jammed + seized);
 
   // 4. Value per hit (attack damage or defend block).
   const verb = frame.verb;
@@ -183,9 +187,18 @@ export function deriveCard(card, ctx) {
     });
     // Power modifiers are folded into the Core's line so the breakdown sums to the total.
     const powerBonus = sumMods('power', false);
-    const corePart = Math.floor((core.power + powerBonus) * frame.coreScaling);
+    // Power multipliers (Overdrive) apply after additive Power bonuses.
+    let powerMult = 1;
+    for (const m of modifiers) {
+      if (m.stat === 'power' && m.mul !== undefined && evaluateCondition(m.when, scope))
+        powerMult *= m.mul;
+    }
+    const corePart = Math.floor(
+      Math.floor((core.power + powerBonus) * powerMult) * frame.coreScaling,
+    );
     const notes = [
       powerBonus ? `${powerBonus > 0 ? '+' : ''}${powerBonus} power` : '',
+      powerMult !== 1 ? `×${powerMult} power` : '',
       frame.coreScaling === 1 ? '' : `×${frame.coreScaling}`,
     ].filter(Boolean);
     breakdown.splice(1, 0, {
@@ -236,9 +249,17 @@ export function deriveCard(card, ctx) {
   if (rust > 0)
     breakdown.push({ source: 'slag', label: 'Rust Slag', stat: 'capacity', value: -rust });
   if (jammed) breakdown.push({ source: 'status', label: 'Jammed', stat: 'cost', value: 1 });
+  if (seized) {
+    breakdown.push({ source: 'status', label: 'Seized Frame', stat: 'cost', value: 1 });
+    breakdown.push({ source: 'status', label: 'Seized Frame', stat: 'capacity', value: -1 });
+  }
 
   const onPlay = [...(frame.hooks?.cardPlayed ?? []), ...(activeMod?.hooks?.cardPlayed ?? [])];
   const onKill = [...(frame.hooks?.enemyKilled ?? []), ...(activeMod?.hooks?.enemyKilled ?? [])];
+  const onExhaust = [
+    ...(frame.hooks?.cardExhausted ?? []),
+    ...(activeMod?.hooks?.cardExhausted ?? []),
+  ];
 
   /** @type {Omit<DerivedCard, 'hash'>} */
   const derived = {
@@ -261,6 +282,8 @@ export function deriveCard(card, ctx) {
     suppressed: { mod: modSuppressed, coreRider: riderSuppressed },
     onPlay,
     onKill,
+    onExhaust,
+    seized: !!seized,
     modText: activeMod ? [activeMod.text] : [],
     hasTargetConditions,
     breakdown,
@@ -303,6 +326,7 @@ function hashDerived(card, d) {
     d.weight,
     d.capacity,
     d.suppressed,
+    d.seized,
   ]);
   // FNV-1a 32-bit
   let h = 0x811c9dc5;
