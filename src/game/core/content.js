@@ -156,6 +156,7 @@ const FIELD_RULES = {
     pattern: is.array,
     onDeath: is.optional(is.array),
     statuses: is.optional(is.object),
+    loot: is.optional(is.object),
   },
   encounter: {
     id: is.string,
@@ -185,7 +186,11 @@ export const OP_SCHEMAS = {
   exhaustSlag: { count: posInt },
   ricochet: { pct: is.int(1, 100) },
   siphon: { per: posInt, max: posInt },
+  bonusLoot: { n: posInt },
 };
+
+/** Hook points a component may attach ops to. */
+export const HOOKS = ['cardPlayed', 'enemyKilled'];
 
 /**
  * Validates a content bundle: per-field rules, unique and correctly-prefixed
@@ -326,7 +331,7 @@ export function validateOps(list, where, ids, errors) {
 function validateHooks(hooks, where, ids, errors) {
   if (hooks === undefined || hooks === null || typeof hooks !== 'object') return;
   for (const [name, ops] of Object.entries(hooks)) {
-    if (name !== 'cardPlayed') errors.push(`${where}.hooks: unknown hook "${name}"`);
+    if (!HOOKS.includes(name)) errors.push(`${where}.hooks: unknown hook "${name}"`);
     else validateOps(ops, `${where}.hooks.${name}`, ids, errors);
   }
 }
@@ -393,6 +398,14 @@ function validateEnemies(bundle, ids, errors) {
       if (!moveIds.has(id)) errors.push(`${where}.pattern: unknown move "${id}"`);
     }
     if (e.onDeath !== undefined) validateOps(e.onDeath, `${where}.onDeath`, ids, errors);
+    if (e.loot) {
+      for (const el of e.loot.elements ?? []) {
+        if (!ELEMENTS.includes(el)) errors.push(`${where}.loot.elements: unknown element "${el}"`);
+      }
+      if (e.loot.favor !== undefined && !['frame', 'core', 'mod'].includes(e.loot.favor)) {
+        errors.push(`${where}.loot.favor must be frame, core, or mod`);
+      }
+    }
     // Every Elite must interact with the player's architecture (GDD §3.5).
     if (e.tier === 'elite') {
       const wrench = e.moves.some((/** @type {any} */ m) =>

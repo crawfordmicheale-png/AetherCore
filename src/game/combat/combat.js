@@ -43,6 +43,7 @@ import { OPS, applyRider, attackAmount } from './ops.js';
  * @property {EnemyState[]} enemies
  * @property {{ slot: string, source: string | null, untilTurn: number }[]} suppression
  * @property {Record<string, number>} timesPlayed
+ * @property {number} bonusLoot  Extra loot rolls earned this combat (Scavenger's Hook).
  *
  * @typedef {object} CombatEnv
  * @property {import('../core/registry.js').Registry} registry
@@ -123,6 +124,7 @@ export class Combat {
       enemies: [],
       suppression: [],
       timesPlayed: {},
+      bonusLoot: 0,
     };
     for (const card of deck) {
       state.cards[card.uid] = /** @type {CombatCard} */ ({
@@ -458,6 +460,8 @@ export class Combat {
     this.emit({ type: 'turnStarted', turn: s.turn });
     this.emit({ type: 'energyChanged', energy: s.energy });
     this.draw(s.drawPerTurn);
+    // The turn is fully set up (hand drawn): a safe point to autosave.
+    this.emit({ type: 'turnReady', turn: s.turn });
   }
 
   runEnemyTurn() {
@@ -667,12 +671,15 @@ export class Combat {
       }
     }
 
-    if (targetId !== 'player' && target.hp <= 0) this.killEnemy(targetId);
+    if (targetId !== 'player' && target.hp <= 0) this.killEnemy(targetId, opts.ctx);
     else if (targetId === 'player' && target.hp <= 0) this.checkEnd();
   }
 
-  /** @param {string} uid */
-  killEnemy(uid) {
+  /**
+   * @param {string} uid
+   * @param {OpContext} [ctx] the card effect that dealt the killing blow, if any
+   */
+  killEnemy(uid, ctx) {
     const enemy = /** @type {EnemyState} */ (this.enemy(uid));
     if (!enemy.alive) return;
     enemy.alive = false;
@@ -681,6 +688,11 @@ export class Combat {
     this.emit({ type: 'enemyDied', uid });
     const onDeath = this.registry.get(enemy.defId).onDeath;
     if (onDeath) this.resolve(onDeath, { source: uid });
+    // On-kill hooks of the card that landed the blow (Scavenger's Hook).
+    if (ctx?.cardUid && ctx.source === 'player' && !this.over) {
+      const onKill = this.derive(ctx.cardUid).onKill;
+      if (onKill.length) this.resolve(onKill, { ...ctx, target: uid });
+    }
   }
 
   /**

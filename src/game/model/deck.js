@@ -14,11 +14,12 @@ export function buildStarterDeck(registry, chassisId) {
   const deck = [];
   for (const entry of chassis.deck) {
     for (let i = 0; i < entry.count; i++) {
+      // Starter parts are Rusted (GDD §2.6): they crush for 5 and never return to Cargo.
       deck.push({
         uid: `c${deck.length + 1}`,
-        frame: { defId: entry.frame },
-        core: { defId: entry.core },
-        ...(entry.mod ? { mod: { defId: entry.mod } } : {}),
+        frame: { defId: entry.frame, rusted: true },
+        core: { defId: entry.core, rusted: true },
+        ...(entry.mod ? { mod: { defId: entry.mod, rusted: true } } : {}),
       });
     }
   }

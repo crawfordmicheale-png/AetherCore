@@ -4,9 +4,7 @@
  * combat engine, the renderer, and input. All rules live in src/game; this
  * file only decides what to show and which command to send.
  */
-import { Combat } from '../game/combat/combat.js';
 import { EventBus } from '../game/core/events.js';
-import { buildSandboxDeck, buildStarterDeck } from '../game/model/deck.js';
 import { STATUS_DEFS } from '../game/model/statuses.js';
 import { riderText } from '../game/model/cardText.js';
 import { DEFAULT_BINDINGS, actionForKey, handIndexForKey } from '../input/hotkeys.js';
@@ -21,6 +19,7 @@ import { drawTargetingArrow } from '../ui/targetingArrow.js';
  * @typedef {{ type: string, x?: number, y?: number, key?: string, button?: number }} InputEvent
  * @typedef {{ x: number, y: number, w: number, h: number }} Rect
  * @typedef {{ uid: string, cx: number, cy: number, angle: number, scale: number, rect: Rect }} HandSlot
+ * @typedef {'retry' | 'next' | 'title' | 'continue'} CombatExit
  */
 
 const PLAY_LINE_Y = 720; // drag a non-targeted card above this line to play it
@@ -48,40 +47,31 @@ export class CombatScene {
   /**
    * @param {object} opts
    * @param {import('../game/core/registry.js').Registry} opts.registry
-   * @param {string} opts.encounterId
-   * @param {string} opts.seed
+   * @param {(bus: EventBus) => import('../game/combat/combat.js').Combat} opts.makeCombat  Creates (or resumes) the combat on the scene's bus.
+   * @param {string} opts.subtitle  Shown under the encounter name (seed, run progress).
    * @param {string} [opts.chassisId]
-   * @param {'starter' | 'sandbox'} [opts.deck]
-   * @param {(action: 'retry' | 'next' | 'title') => void} opts.onExit
+   * @param {'quick' | 'run'} [opts.mode]  Quick fights offer retry/next; run fights continue the run.
+   * @param {(action: CombatExit) => void} opts.onExit
    */
   constructor({
     registry,
-    encounterId,
-    seed,
+    makeCombat,
+    subtitle,
     chassisId = 'chassis_tinker',
-    deck = 'starter',
+    mode = 'quick',
     onExit,
   }) {
     this.registry = registry;
-    this.encounterId = encounterId;
-    this.seed = seed;
+    this.subtitle = subtitle;
     this.chassisId = chassisId;
+    this.mode = mode;
     this.onExit = onExit;
     this.bindings = DEFAULT_BINDINGS;
 
     this.bus = new EventBus();
     this.fx = new Fx();
-    const chassis = registry.get(chassisId);
-    this.combat = Combat.create({
-      registry,
-      bus: this.bus,
-      encounterId,
-      deck: deck === 'sandbox' ? buildSandboxDeck(registry) : buildStarterDeck(registry, chassisId),
-      player: { hp: chassis.hp, maxHp: chassis.hp },
-      seed,
-      energyPerTurn: chassis.energy,
-      drawPerTurn: chassis.draw,
-    });
+    this.combat = makeCombat(this.bus);
+    this.encounterId = this.combat.state.encounterId;
 
     this.time = 0;
     this.pointer = { x: 0, y: 0 };
@@ -108,14 +98,14 @@ export class CombatScene {
     this.bgVersion = -1;
     /** Time the combat ended; end-screen input is ignored briefly so a mashed key can't skip it. */
     /** @type {number | null} */ this.overAt = null;
-    /** @type {{ key: string, value: ReturnType<Combat['preview']> } | null} */ this.previewCache =
+    /** @type {{ key: string, value: ReturnType<import('../game/combat/combat.js').Combat['preview']> } | null} */ this.previewCache =
       null;
 
     this.subscribe();
   }
 
   enter() {
-    this.combat.start();
+    if (this.combat.state.turn === 0) this.combat.start();
     this.syncDisplayHp(true);
   }
 
@@ -508,7 +498,9 @@ export class CombatScene {
     if (this.combat.over) {
       if (this.overAt === null || this.time - this.overAt < 0.8 || this.time < this.lockedUntil)
         return;
-      if (action === 'retry') this.onExit('retry');
+      if (this.mode === 'run') {
+        if (action === 'confirm' || action === 'next') this.onExit('continue');
+      } else if (action === 'retry') this.onExit('retry');
       else if (action === 'next' || action === 'confirm') this.onExit('next');
       else if (action === 'cancel') this.onExit('title');
       return;
@@ -786,7 +778,7 @@ export class CombatScene {
     const s = this.combat.state;
     const encounter = this.registry.get(this.encounterId);
     label(ctx, 40, 44, `${encounter.name}`, { font: FONT.title(28) });
-    label(ctx, 40, 72, `Turn ${s.turn} · seed ${this.seed}`, {
+    label(ctx, 40, 72, `Turn ${s.turn} · ${this.subtitle}`, {
       font: FONT.mono(15),
       color: '#8a7a60',
     });
@@ -1126,7 +1118,13 @@ export class CombatScene {
         color: '#cbbd9e',
       },
     );
-    label(ctx, LOGICAL_WIDTH / 2, 580, '[N] Next encounter   ·   [R] Retry   ·   [Esc] Title', {
+    const prompt =
+      this.mode === 'run'
+        ? won
+          ? '[Enter] Collect salvage'
+          : '[Enter] See run summary'
+        : '[N] Next encounter   ·   [R] Retry   ·   [Esc] Title';
+    label(ctx, LOGICAL_WIDTH / 2, 580, prompt, {
       font: FONT.ui(26, 600),
       align: 'center',
     });

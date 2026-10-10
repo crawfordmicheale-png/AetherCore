@@ -11,7 +11,8 @@ import { dependsOnTarget, evaluateCondition } from './conditions.js';
 import { REINFORCE_BONUS } from './statuses.js';
 
 /**
- * @typedef {{ defId: string, tuned?: boolean, capacityBonus?: number }} ComponentInstance
+ * @typedef {{ defId: string, uid?: string, tuned?: boolean, capacityBonus?: number, rusted?: boolean }} ComponentInstance
+ *   `rusted` marks starter parts (crush for 5, never return to Cargo); `uid` identifies a part in Cargo.
  * @typedef {{ uid: string, frame: ComponentInstance, core: ComponentInstance, mod?: ComponentInstance }} CardInstance
  *
  * @typedef {object} DerivationContext
@@ -46,6 +47,7 @@ import { REINFORCE_BONUS } from './statuses.js';
  * @property {number} overclock       Weight over capacity (0 = stable).
  * @property {{ mod: boolean, coreRider: boolean }} suppressed
  * @property {any[]} onPlay           Ops to run after the card's main effect (from active components).
+ * @property {any[]} onKill           Ops to run when this card kills an enemy.
  * @property {string[]} modText       Rules text contributed by the active Mod.
  * @property {boolean} hasTargetConditions True if hovering a target may change the numbers.
  * @property {BreakdownLine[]} breakdown
@@ -236,6 +238,7 @@ export function deriveCard(card, ctx) {
   if (jammed) breakdown.push({ source: 'status', label: 'Jammed', stat: 'cost', value: 1 });
 
   const onPlay = [...(frame.hooks?.cardPlayed ?? []), ...(activeMod?.hooks?.cardPlayed ?? [])];
+  const onKill = [...(frame.hooks?.enemyKilled ?? []), ...(activeMod?.hooks?.enemyKilled ?? [])];
 
   /** @type {Omit<DerivedCard, 'hash'>} */
   const derived = {
@@ -257,6 +260,7 @@ export function deriveCard(card, ctx) {
     overclock,
     suppressed: { mod: modSuppressed, coreRider: riderSuppressed },
     onPlay,
+    onKill,
     modText: activeMod ? [activeMod.text] : [],
     hasTargetConditions,
     breakdown,
