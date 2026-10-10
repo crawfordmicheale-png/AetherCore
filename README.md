@@ -32,13 +32,16 @@ npm run check         # lint, format check, typecheck, data validation, tests (w
 | `npm run typecheck`     | `tsc` over JSDoc-annotated JavaScript (`// @ts-check`), no build step |
 | `npm run validate-data` | Validates `src/data/*.json` fields, IDs, and cross-references        |
 | `npm run format`        | Prettier                                                             |
+| `npm run simulate`      | Balance simulator: `-- --runs 400 --seed s [--deck sandbox] [--json]` |
 
 ## Playing the Graybox
 
-**New Gauntlet run** chains four fights (the last against the Foreman) with salvage screens and two Workbenches; HP carries over and the run autosaves (**Continue run** resumes it, even mid-fight). **Quick fight** jumps straight into one encounter. `T` on the title toggles between the Tinker starter deck and a Sandbox test deck.
+**New run** generates a Stratum map: pick a lit node on the next row (click, or `←` / `→` and `Enter`) and climb to the Crucible Engine at the top. Combats, Elites (harder, and they offer a Blueprint), Workbenches, Smelters, and Anomalies are marked on the map and in its legend; the side panel lists your Blueprints, Cargo, and deck. HP carries over and the run autosaves at every node and turn start (**Continue run** resumes it, even mid-fight). **Quick fight** jumps straight into one encounter. `T` on the title toggles between the Tinker starter deck and a Sandbox test deck.
 
 - **Salvage:** drag parts into the Cargo Hold or onto the Crusher (click + `T` / `C` also work). Unclaimed parts are lost when you continue.
 - **Workbench:** click a deck card to edit it (or start with an empty bench for a new card), double-click or drag Cargo parts onto the sockets, and **Weld**. Each changed socket costs 1 Tool Charge; Tune, Dismantle, and Field Repair are on the bench.
+- **Smelter:** click an offer to buy it into Cargo. Select a deck card to Upgrade its Frame's Capacity or Remove it; select three same-tier Cargo parts and press a Fuse button to make a next-tier Frame, Core, or Mod.
+- **Anomaly:** choose with the mouse or `1`–`9`; some choices ask you to pick a Cargo part.
 
 Combat controls:
 
@@ -64,13 +67,13 @@ src/
   game/core/     Headless logic: seeded RNG streams, event bus, content validation, registry
   game/model/    Card derivation (deriveCard), rules text, conditions, statuses, deck builders
   game/combat/   Combat engine (turns, intents, previews) and effect ops
-  game/run/      Run state, Cargo, Workbench operations, loot tables, the M2 Gauntlet, economy constants
+  game/run/      Run state, map generator, Cargo, Workbench, Smelter, Anomalies, loot tables, economy constants
   render/        Letterboxed 1920x1080 canvas layers, loop, card compositing, FX, draw helpers
   input/         Rebindable hotkeys
   ui/            Widgets: button, Cargo Hold grid, Bézier targeting arrow
-  scenes/        Title, combat, salvage (loot), Workbench, run summary, shared run header
+  scenes/        Title, map, combat, salvage (loot), Workbench, Smelter, Anomaly, run summary, shared run header
   platform/      Save/load bridge (Electron IPC, or localStorage in the browser)
-tools/           Data validator, dev server, Node content loader
+tools/           Data validator, balance simulator, dev server, Node content loader
 tests/           node --test suites
 ```
 

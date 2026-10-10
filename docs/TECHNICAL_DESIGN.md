@@ -99,9 +99,9 @@ Listener order: Blueprints → player statuses → card in play → cards in han
 /** @typedef {{ id: string, defId: string, tuned?: boolean, capacityBonus?: number }} ComponentInstance */
 /** @typedef {{ uid: string, frame: ComponentInstance, core: ComponentInstance, mod?: ComponentInstance, flags?: string[] }} CardInstance */
 
-// As implemented in src/game/run/run.js (M2). Map, Blueprints, Pressure, and Schematics arrive in M3+.
+// As implemented in src/game/run/run.js (M3). Pressure and Schematics arrive later.
 RunState = {
-  version: 1,
+  version: 2,
   seed: 'A7F3-K2QX',
   chassisId: 'chassis_tinker',
   rng: { map: [...], loot: [...], shuffle: [...], ai: [...], events: [...], smelter: [...], combat: [...] },
@@ -110,14 +110,21 @@ RunState = {
   nextId: 12,                       // card uids c<n>, part uids p<n>
   deck: [/* CardInstance */],
   cargo: { slots: 10, items: [/* ComponentInstance with uid */] },
-  step: 0,                          // index into the Gauntlet (M2) / map position (M3)
-  phase: 'combat',                  // combat | loot | workbench | won | lost
+  blueprints: ['bp_ballast_tank'],
+  map: StratumMap,                  // { rows, cols, nodes: { [id]: { id, row, col, type, pool?, next } }, start, boss }
+  position: 'n3_2' | null,          // current node
+  visited: ['n0_1', 'n1_2', ...],
+  phase: 'map',                     // map | combat | loot | workbench | smelter | event | won | lost
   encounterId: 'enc_drones',
   combat: null | CombatState,       // the live combat; saving the run saves the fight
-  loot: null | { items: [...], aether },
+  loot: null | { items: [...], aether, pick, blueprints },   // pick: boss Prototype choice; blueprints: Elite/boss choice
+  smelter: null | { offers: [{ uid, defId, price, sale, sold }] },
+  event: null | { id, result },
+  seenEvents: [...],
+  counters: { capacityUpgrades, removals },   // escalating Smelter prices
   workbench: null | { charges: 3, used: 0, repaired: false },
   flags: { fieldKitUsed: false },
-  stats: { combatsWon, aetherEarned, partsCrushed, cardsAssembled },
+  stats: { combatsWon, elitesDefeated, nodesVisited, aetherEarned, partsCrushed, cardsAssembled },
 };
 // ComponentInstance = { defId, uid?, tuned?, capacityBonus?, rusted? }
 
@@ -134,7 +141,9 @@ CombatState = {
   piles: { draw: [...], hand: [...], discard: [...], exhaust: [...] }, // uids; top of draw = end
   player: { hp, maxHp, block: 0, statuses: { burn: 2, charge: 1 } },  // zero statuses are removed
   enemies: [{ uid: 'e1', defId, name, hp, maxHp, block, statuses, patternIndex, alive }],
-  suppression: [{ slot: 'mod' | 'coreRider', source: 'e1', untilTurn: 2 }],
+  suppression: [{ slot: 'mod' | 'coreRider' | 'frame', source: 'e1', untilTurn: 2, cardUid? }], // frame: Seizure on one card
+  mods: { startBlock, firstTurnEnergy, heatSink, faraday, slagFilter },  // from Blueprints
+  used: { heatSink: true },  // once-per-combat Blueprint effects spent
   timesPlayed: { [uid]: count },
 };
 ```
@@ -246,9 +255,16 @@ Ops are small, composable, and individually unit-tested. Every op is `(combat, o
 | `ricochet` | `pct` | M1 | Repeats the card's hit on a random other enemy. |
 | `siphon` | `per`, `max` | M1 | Heals from unblocked damage the card dealt. |
 | `bonusLoot` | `n` | M2 | Extra post-combat loot rolls (Scavenger's Hook, via the `enemyKilled` hook). |
-| `summon` | `enemyId`, `position?` | Planned (M3) | Foreman Gantry's 50% summon. |
+| `summon` | `enemy`, `count?` | M3 | Adds enemies mid-fight (max 5 alive). Foreman Gantry's 50% trigger. |
+| `setPattern` | `pattern` | M3 | Replaces the source enemy's move pattern (boss phases); restarts it at the first move. |
 | `gainAether` | `amount` | Planned (M2) | |
 | `script` | `name`, `params` | Planned | Escape hatch: named JS function in `combat/scripts/`. Use sparingly; every script needs a test. |
+
+**Enemy triggers** (M3): an enemy may list `triggers: [{ id, when: { hpBelowPct }, text, ops }]`. Each fires once, right after the damage that crosses its threshold, and emits `enemyPhase` for the renderer. The Crucible Engine's phases are two triggers.
+
+**Blueprints** (M3, `blueprints.json`) are passive run modifiers with a closed set of `effects` keys validated in `content.js`: integers (`toolCharges`, `cargoSlots`, `crushBonusPct`, `fieldRepairBonusPct`, `eliteBonusLoot`, `smelterDiscountPct`, `startBlock`, `firstTurnEnergy`) and once-per-combat or always-on flags (`heatSink`, `faraday`, `slagFilter`). Run-level effects are read through `Run.effect(key)`; combat-level ones are passed to `Combat.create({ mods })`.
+
+**Anomalies** (M3, `events.json`) hold text and choices; each choice's logic is a small handler in `src/game/run/events.js` (`blocked?(run)` and `resolve(run, params)` returning the result text).
 
 **Conditions** (`when`) are a closed set of predicates in `src/game/model/conditions.js`: `targetHas`, `targetHpBelowPct`, `playerHas`, `coreElement`, `componentSuppressed`, `handCountAtLeast`, combined with `all` / `any` / `not`. Target conditions only apply once a target is known (hover preview or resolution).
 
@@ -384,8 +400,8 @@ A quadratic Bézier from the card's top-center to the cursor, with the control p
 * **Unit tests** for every op, status, and derivation rule. Golden tests for each starter deck card.
 * **Property tests** (hand-rolled generators, `tests/combatProperties.test.js`): across 60 random games per property, preview equals actual resolution, invariants hold after every action (HP in range, no card lost or duplicated across piles), same seed + inputs reproduce identical state and event logs, and a JSON round-trip mid-combat resumes identically.
 * **Replay tests:** a recorded `(seed, inputs[])` log must reproduce the same final state hash.
-* **Balance simulator** (`tools/simulate.js`): a greedy bot plays N runs headlessly and reports win rate per Stratum, average HP lost per encounter, Cargo crush rate, and pick rates per component. Used to catch outliers before human playtests.
-* **CI** (GitHub Actions): lint, typecheck, data validation, tests, and a 200-run simulator smoke test on each PR.
+* **Balance simulator** (`tools/simulate.js`, `npm run simulate -- --runs 400 --seed s`): a greedy bot plays N full runs headlessly (combat, salvage, Workbench, map choices, Smelter, Anomalies) and reports win rate, rows reached, Aether, Blueprints, Cargo crush rate, and per-encounter HP lost, turns, and death rate (`--json` for machine output). Used to catch outliers before human playtests. Pick rates per component are still to come.
+* **CI** (GitHub Actions): lint, typecheck, data validation, tests, and a 50-run simulator smoke test on each PR.
 
 ---
 

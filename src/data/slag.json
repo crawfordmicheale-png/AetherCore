@@ -3,12 +3,12 @@
     "id": "slag_molten",
     "name": "Molten Slag",
     "cost": null,
-    "keywords": [],
-    "text": "Unplayable. Playing a Kinetic Core card while this is in hand: take 3 damage. End of turn: gain Burn 1.",
+    "keywords": ["ethereal"],
+    "text": "Unplayable. Playing a Kinetic Core card while this is in hand: take 2 damage. End of turn: gain Burn 1, then it cools (Exhausts).",
     "onCardPlayedInHand": [
       {
         "when": { "coreElement": "kinetic" },
-        "ops": [{ "op": "damage", "amount": 3, "target": "player" }]
+        "ops": [{ "op": "damage", "amount": 2, "target": "player" }]
       }
     ],
     "endOfTurnInHand": [{ "op": "applyStatus", "status": "burn", "stacks": 1, "target": "player" }]

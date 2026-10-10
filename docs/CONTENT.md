@@ -100,7 +100,7 @@ See [GDD §3.4](GDD.md#34-enemy-interaction-the-wrench-in-the-gears) for rules.
 
 | ID | Name | Playable | Effect | Unlock |
 | --- | --- | --- | --- | --- |
-| `slag_molten` | Molten Slag | No | Playing a Kinetic Core card while this is in hand: take 3 damage. End of turn: gain Burn 1. | Slice |
+| `slag_molten` | Molten Slag | No | Ethereal. Playing a Kinetic Core card while this is in hand: take 2 damage. End of turn: gain Burn 1, then it cools (Exhausts). | Slice |
 | `slag_static` | Static Slag | No | Playing a Voltaic Core card while this is in hand: become Jammed. | Slice |
 | `slag_rust` | Rust Slag | No | All Frames in hand have −1 Capacity. | Slice |
 | `slag_sludge` | Sludge | Cost 1 | Play to Exhaust. | Slice |
@@ -147,12 +147,14 @@ See [GDD §3.4](GDD.md#34-enemy-interaction-the-wrench-in-the-gears) for rules.
 | ID | Name | HP | Pattern (repeats) | Wrench | Loot Bias |
 | --- | --- | --- | --- | --- | --- |
 | `en_scrapper_drone` | Scrapper Drone | 18–22 | Attack 6 → Attack 6 → Defend 5 | — | Kinetic |
-| `en_rivet_hound` | Rivet Hound | 24–28 | Attack 4×2 → Buff (+2 Strength) → Attack 4×2 | — | Kinetic, Frames |
-| `en_boiler_mite` | Boiler Mite | 10–12 | Attack 5. On death: player gains Burn 3. | — | Thermal |
+| `en_rivet_hound` | Rivet Hound | 24–28 | Attack 4×2 → Buff (+1 Strength) → Attack 4×2 | — | Kinetic, Frames |
+| `en_boiler_mite` | Boiler Mite | 10–12 | Attack 5. On death: player gains Burn 2. | — | Thermal |
 | `en_sentry_turret` | Sentry Turret | 30 | Charge (no action) → Attack 14 → Defend 8 | — | Voltaic |
-| `en_slag_tender` | Slag Tender | 26–30 | Slag: 1 Molten Slag to draw pile → Attack 7 → Attack 7 | Slag | Thermal |
+| `en_slag_tender` | Slag Tender | 26–30 | Slag: 1 Molten Slag to draw pile → Attack 6 → Attack 6 | Slag | Thermal |
 | `en_spark_wisp` | Spark Wisp | 14–16 | Debuff (Jammed) → Attack 5 + Shock-self (it takes +3 from next hit) | — | Voltaic |
 | `en_jammer_bot` | Jammer Bot | 20 | Suppress: Dampening Field → Attack 6 → Attack 6 | Suppress (Core) | Mods |
+
+> **M3 tuning:** the numbers above reflect balance-simulator tuning (Molten Slag, Boiler Mite, Rivet Hound, Slag Tender, all three Elites, and the boss were softened from the first draft so the all-Kinetic starter deck isn't punished by Slag before it can craft around it).
 
 **Encounter pool (normal):** Easy: Drone ×2 · Mite ×3 · Hound · Drone + Wisp. Standard: Turret + Mite ×2 · Hound + Slag Tender · Jammer + Drone ×2 · Wisp ×2 + Drone · Hound ×2.
 
@@ -160,14 +162,14 @@ See [GDD §3.4](GDD.md#34-enemy-interaction-the-wrench-in-the-gears) for rules.
 
 | ID | Name | HP | Pattern | Wrench |
 | --- | --- | --- | --- | --- |
-| `el_foreman_gantry` | Foreman Gantry | 80 | EMP (Suppress Mods) → Slam 12 → Attack 5×3 → (repeat). Summons a Scrapper Drone at 50% HP. | Suppress (Mod) |
-| `el_slagmaw` | Slagmaw | 95 | Slag: 2 Molten Slag to hand → Bite 10 → Devour (heal 8, Exhausts 1 Slag from your hand) → (repeat). | Slag |
-| `el_press_warden` | Press Warden | 70 + Plated 4 | Seizure → Crush 16 → Defend 12 → (repeat). | Suppress (Frame) |
+| `el_foreman_gantry` | Foreman Gantry | 72 | EMP (Suppress Mods) → Slam 12 → Attack 5×3 → (repeat). Summons a Scrapper Drone at 50% HP. | Suppress (Mod) |
+| `el_slagmaw` | Slagmaw | 82 | Slag: 2 Molten Slag to draw pile → Bite 9 → Devour (heal 8, Block 6) → (repeat). | Slag |
+| `el_press_warden` | Press Warden | 70 + Plated 4 | Seizure (Frame: +1 cost, −1 Capacity on one card in hand) → Crush 16 → Brace (Block 12, Plated +2) → (repeat). | Suppress (Frame) |
 
-**Boss: The Crucible Engine** (`boss_crucible`) — 220 HP
+**Boss: The Crucible Engine** (`boss_crucible`) — 160 HP
 
-* **Phase 1 (100–50%):** Pour (2 Molten Slag into draw pile) → Smelt Strike 14 → Ignite (player Burn 3) → repeat.
-* **Phase 2 (<50%):** Gains Fortified 5. Cycles EMP → Molten Barrage 6×3 → Pour (3 Rust Slag to hand). Below 25%, every Slag in the player's hand at end of turn deals 2 damage.
+* **Phase 1 (100–50%):** Pour (1 Molten Slag into draw pile) → Smelt Strike 12 → Ignite (player Burn 2) → repeat.
+* **Phase 2 (<50%):** Gains Fortified 4. Cycles EMP → Molten Barrage 5×3 → Pour (3 Rust Slag to hand). Below 25% (Crucible Heat 2), every Slag in the player's hand at end of turn deals 2 damage.
 * **Design intent:** Tests whether the deck can handle Slag (Grounding Rod, thin decks, Pierce/Thermal to push through Fortified).
 
 ### 6.2 Stratum 2: The Pressure Vaults

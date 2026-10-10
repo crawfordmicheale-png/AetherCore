@@ -30,13 +30,23 @@ function registerIpc() {
       throw err;
     }
   });
+  /** @type {Map<string, Promise<void>>} pending write per save file */
+  const writes = new Map();
   ipcMain.handle('platform:save', async (_e, name, text) => {
     if (typeof text !== 'string') throw new TypeError('save: text must be a string');
     const target = savePath(name);
-    await mkdir(app.getPath('userData'), { recursive: true });
-    // Atomic write: a crash mid-save never leaves a truncated file.
-    await writeFile(`${target}.tmp`, text, 'utf8');
-    await rename(`${target}.tmp`, target);
+    // Saves to one file run one at a time, in order: back-to-back saves (node entry, then
+    // turnReady) would otherwise race on the shared .tmp file.
+    const write = (writes.get(target) ?? Promise.resolve())
+      .catch(() => {})
+      .then(async () => {
+        await mkdir(app.getPath('userData'), { recursive: true });
+        // Atomic write: a crash mid-save never leaves a truncated file.
+        await writeFile(`${target}.tmp`, text, 'utf8');
+        await rename(`${target}.tmp`, target);
+      });
+    writes.set(target, write);
+    return write;
   });
   ipcMain.handle('platform:remove', async (_e, name) => {
     await rm(savePath(name), { force: true });

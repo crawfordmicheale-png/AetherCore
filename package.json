@@ -17,7 +17,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json",
     "validate-data": "node tools/validate-data.js",
-    "check": "npm run lint && npm run format:check && npm run typecheck && npm run validate-data && npm test"
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run validate-data && npm test",
+    "simulate": "node tools/simulate.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

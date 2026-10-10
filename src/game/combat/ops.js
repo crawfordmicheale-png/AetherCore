@@ -128,6 +128,23 @@ export const OPS = {
     combat.dealDamage('player', victim.uid, amount, { ctx });
   },
 
+  /** Brings in reinforcements (at most 5 enemies alive). */
+  summon(combat, op, ctx) {
+    for (let i = 0; i < (op.count ?? 1); i++) {
+      if (combat.aliveEnemies().length >= 5) return;
+      const enemy = combat.spawnEnemy(op.enemy);
+      combat.emit({ type: 'enemySummoned', uid: enemy.uid, defId: op.enemy, source: ctx.source });
+    }
+  },
+
+  /** Phase change: the source enemy starts cycling a new move pattern. */
+  setPattern(combat, op, ctx) {
+    const enemy = ctx.source ? combat.enemy(ctx.source) : null;
+    if (!enemy) return;
+    enemy.pattern = [...op.pattern];
+    enemy.patternIndex = 0;
+  },
+
   /** Extra loot rolls for the post-combat reward (Scavenger's Hook). */
   bonusLoot(combat, op) {
     combat.state.bonusLoot = (combat.state.bonusLoot ?? 0) + op.n;

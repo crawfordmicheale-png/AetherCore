@@ -1,9 +1,9 @@
 // @ts-check
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { EventBus } from '../src/game/core/events.js';
 import { Rng } from '../src/game/core/rng.js';
 import { CRUSH_VALUE, RUSTED_CRUSH_VALUE, TOOL_CHARGES } from '../src/game/run/economy.js';
-import { GAUNTLET } from '../src/game/run/gauntlet.js';
 import { rollLoot } from '../src/game/run/loot.js';
 import { Run, RunError } from '../src/game/run/run.js';
 import { registry } from './helpers.js';
@@ -20,10 +20,18 @@ const newRun = (opts = {}) =>
 function atWorkbench(defIds, opts = {}) {
   const run = newRun(opts);
   run.state.cargo.items = defIds.map((defId, i) => ({ uid: `t${i + 1}`, defId }));
-  run.state.step = GAUNTLET.findIndex((s) => s.type === 'workbench');
   run.state.flags.fieldKitUsed = true; // plain 3 charges unless a test says otherwise
-  run.enterStep();
+  run.enterNode({ type: 'workbench' });
   return run;
+}
+
+/**
+ * Travels to the first node on the map (always a combat) and starts the fight.
+ * @param {Run} run
+ */
+function startFirst(run) {
+  if (run.state.phase === 'map') run.travel(run.availableNodes()[0]);
+  return run.startCombat();
 }
 
 /** Plays a combat to the end with a simple greedy policy. */
@@ -38,6 +46,11 @@ function autoplay(/** @type {import('../src/game/combat/combat.js').Combat} */ c
 test('a new run: starter deck is Rusted, Cargo has the chassis kit, first node is a combat', () => {
   const run = newRun();
   const s = run.state;
+  assert.deepEqual(newRun().state, s, 'deterministic by seed');
+  assert.equal(s.phase, 'map');
+  assert.deepEqual(run.availableNodes(), s.map.start);
+  assert.throws(() => run.travel('nowhere'), /not connected/);
+  run.travel(s.map.start[0]);
   assert.equal(s.deck.length, 10);
   assert.ok(s.deck.every((c) => c.frame.rusted && c.core.rusted));
   assert.equal(s.cargo.items.length, 1);
@@ -45,12 +58,11 @@ test('a new run: starter deck is Rusted, Cargo has the chassis kit, first node i
   assert.equal(registry.get(s.cargo.items[0].defId).tier, 'salvage');
   assert.equal(s.phase, 'combat');
   assert.equal(registry.get(/** @type {string} */ (s.encounterId)).kind, 'easy');
-  assert.deepEqual(newRun().state, s, 'deterministic by seed');
 });
 
 test('combat carries HP over, rolls loot with Aether, then moves on', () => {
   const run = newRun();
-  const combat = run.startCombat();
+  const combat = startFirst(run);
   assert.equal(run.state.combat, combat.state, 'the run holds the live combat state');
   autoplay(combat);
   assert.equal(combat.state.phase, 'won');
@@ -65,7 +77,7 @@ test('combat carries HP over, rolls loot with Aether, then moves on', () => {
 
 test('losing a combat ends the run', () => {
   const run = newRun();
-  const combat = run.startCombat();
+  const combat = startFirst(run);
   combat.state.player.hp = 1;
   combat.state.player.block = 0;
   while (!combat.over) combat.endTurn();
@@ -76,7 +88,7 @@ test('losing a combat ends the run', () => {
 
 test('loot: take into Cargo, crush for Aether, refuse when the hold is full', () => {
   const run = newRun();
-  autoplay(run.startCombat());
+  autoplay(startFirst(run));
   run.finishCombat();
   const [a, b] = /** @type {NonNullable<typeof run.state.loot>} */ (run.state.loot).items;
   run.takeLoot(/** @type {string} */ (a.uid));
@@ -94,7 +106,8 @@ test('loot: take into Cargo, crush for Aether, refuse when the hold is full', ()
   assert.throws(() => run.takeLoot('extra'), /Cargo Hold is full/);
   run.leaveLoot();
   assert.equal(run.state.loot, null);
-  assert.equal(run.state.step, 1);
+  assert.equal(run.state.phase, 'map');
+  assert.ok(run.availableNodes().length > 0);
 });
 
 test('loot tables: never starter parts; elites guarantee a Refined+ Mod; bias favors elements', () => {
@@ -135,7 +148,7 @@ test('loot tables: never starter parts; elites guarantee a Refined+ Mod; bias fa
 test("Scavenger's Hook: a killing blow earns a bonus loot roll", () => {
   const run = newRun();
   run.state.deck = run.state.deck.map((c) => ({ ...c, mod: { defId: 'mod_scavenger' } }));
-  const combat = run.startCombat();
+  const combat = startFirst(run);
   autoplay(combat);
   assert.ok(combat.state.bonusLoot >= 1, `bonusLoot ${combat.state.bonusLoot}`);
   const { loot } = run.finishCombat();
@@ -144,13 +157,10 @@ test("Scavenger's Hook: a killing blow earns a bonus loot roll", () => {
 
 test('Workbench: Tool Charges, plus Field Kit on the first visit', () => {
   const run = newRun();
-  run.state.step = GAUNTLET.findIndex((s) => s.type === 'workbench');
-  run.enterStep();
+  run.enterNode({ type: 'workbench' });
   assert.equal(run.state.workbench?.charges, TOOL_CHARGES + 1, 'Tinker Field Kit');
   run.leaveWorkbench();
-  run.state.step =
-    GAUNTLET.length - 1 - [...GAUNTLET].reverse().findIndex((s) => s.type === 'workbench');
-  run.enterStep();
+  run.enterNode({ type: 'workbench' });
   assert.equal(run.state.workbench?.charges, TOOL_CHARGES);
 });
 
@@ -278,28 +288,58 @@ test('Field Repair heals 30% and uses the whole visit; only as the first action'
 test('operations are refused outside their phase', () => {
   const run = newRun();
   assert.throws(() => run.assemble({ frame: 'x', core: 'y' }), RunError);
+  assert.throws(() => run.leaveLoot(), /Not available during map/);
+  startFirst(run);
   assert.throws(() => run.crush('x'), /outside combat/);
-  assert.throws(() => run.leaveLoot(), /Not available during combat/);
+  assert.throws(() => run.travel(run.state.map.start[0]), /Not available during combat/);
 });
 
-test('the full Gauntlet can be played to the end, and survives JSON round-trips', () => {
+test('a full Stratum can be played to the boss, and survives JSON round-trips', () => {
   let run = newRun({ deck: 'sandbox' });
-  for (let guard = 0; guard < 20 && !run.over; guard++) {
-    // Save/resume at every node boundary.
+  for (let guard = 0; guard < 200 && !run.over; guard++) {
+    // Save/resume at every step.
     run = new Run(JSON.parse(JSON.stringify(run.state)), { registry });
-    if (run.state.phase === 'combat') {
-      run.state.hp = run.state.maxHp; // keep the scripted player alive
-      autoplay(run.startCombat());
+    const phase = run.state.phase;
+    if (phase === 'map') run.travel(run.availableNodes()[0]);
+    else if (phase === 'combat') {
+      // The scripted player is invulnerable: this test covers flow, not balance.
+      const combat = run.startCombat();
+      combat.state.player.hp = combat.state.player.maxHp = 9999;
+      autoplay(combat);
       run.finishCombat();
-    } else if (run.state.phase === 'loot') {
-      for (const item of [...(run.state.loot?.items ?? [])]) {
+      run.state.hp = run.state.maxHp;
+    } else if (phase === 'loot') {
+      const loot = /** @type {NonNullable<typeof run.state.loot>} */ (run.state.loot);
+      if (loot.blueprints?.length) run.takeBlueprint(loot.blueprints[0]);
+      if (loot.pick?.length && run.cargoFree > 0)
+        run.choosePick(/** @type {string} */ (loot.pick[0].uid));
+      for (const item of [...loot.items]) {
         if (run.cargoFree > 0) run.takeLoot(/** @type {string} */ (item.uid));
       }
       run.leaveLoot();
-    } else if (run.state.phase === 'workbench') {
-      run.leaveWorkbench();
+    } else if (phase === 'workbench') run.leaveWorkbench();
+    else if (phase === 'smelter') run.leaveSmelter();
+    else if (phase === 'event') {
+      const ev = registry.get(/** @type {any} */ (run.state.event).id);
+      const choice = ev.choices.find((/** @type {any} */ c) => !run.eventChoiceBlocked(c.id));
+      run.chooseEvent(choice.id, { cargoUid: run.state.cargo.items[0]?.uid });
+      if (run.state.phase === 'event') run.leaveEvent();
     }
   }
   assert.equal(run.state.phase, 'won');
-  assert.equal(run.state.stats.combatsWon, GAUNTLET.filter((s) => s.type === 'combat').length);
+  assert.equal(run.node?.type, 'boss');
+  assert.equal(run.state.visited.length, run.state.map.rows);
+});
+
+test('the first turnReady save already includes the new combat', () => {
+  const run = newRun();
+  run.travel(run.availableNodes()[0]);
+  const bus = new EventBus();
+  /** @type {any[]} */
+  const snapshots = [];
+  bus.on('turnReady', () => snapshots.push(JSON.parse(JSON.stringify(run.state))));
+  run.startCombat(bus);
+  assert.equal(snapshots.length, 1);
+  assert.equal(snapshots[0].combat?.turn, 1);
+  assert.equal(snapshots[0].combat.piles.hand.length, 5);
 });

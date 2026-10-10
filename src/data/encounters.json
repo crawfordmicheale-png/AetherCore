@@ -34,5 +34,29 @@
     "name": "The Foreman",
     "kind": "elite",
     "enemies": ["el_foreman_gantry"]
+  },
+  {
+    "id": "enc_slagmaw",
+    "name": "Slagmaw's Pit",
+    "kind": "elite",
+    "enemies": ["el_slagmaw"]
+  },
+  {
+    "id": "enc_press_warden",
+    "name": "The Press Line",
+    "kind": "elite",
+    "enemies": ["el_press_warden"]
+  },
+  {
+    "id": "enc_crucible",
+    "name": "The Crucible Engine",
+    "kind": "boss",
+    "enemies": ["boss_crucible"]
+  },
+  {
+    "id": "enc_turret_mites",
+    "name": "Turret Nest",
+    "kind": "normal",
+    "enemies": ["en_boiler_mite", "en_boiler_mite", "en_rivet_hound"]
   }
 ]

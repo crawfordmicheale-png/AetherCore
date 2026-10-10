@@ -29,3 +29,21 @@ export const LOOT = Object.freeze({
   /** Multiplier for Cores matching a defeated enemy's element bias. */
   elementMultiplier: 3,
 });
+
+/** Smelter (GDD §4.5). */
+export const SMELTER = Object.freeze({
+  prices: { salvage: [30, 45], refined: [70, 90], prototype: [140, 170] },
+  tierWeights: { salvage: 60, refined: 30, prototype: 10 },
+  saleDiscountPct: 30,
+  capacityBase: 50,
+  capacityStep: 25,
+  maxCapacityBonus: 2,
+  fusionCost: 20,
+  removalBase: 40,
+  removalStep: 15,
+});
+
+/** Next tier up, for Fusion and the Conveyor Lottery. */
+export const NEXT_TIER = Object.freeze({ salvage: 'refined', refined: 'prototype' });
+/** Next tier down. */
+export const PREV_TIER = Object.freeze({ prototype: 'refined', refined: 'salvage' });
